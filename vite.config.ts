@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
+  base: "./", // ⚡ importante para que los assets se sirvan correctamente en Vercel
   plugins: [react()],
   resolve: {
     alias: {
