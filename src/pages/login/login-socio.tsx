@@ -1,6 +1,10 @@
 import React from "react";
 import LoginBase from "../../components/auth/LoginBase";
 
+/**
+ * Login para Socios
+ * — Gradiente más claro y amigable (turquesa → verde)
+ */
 const LoginSocio: React.FC = () => {
   return (
     <LoginBase

@@ -1,4 +1,3 @@
-// src/components/auth/LoginBase.tsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { LogIn, UserCircle, Shield } from "lucide-react";
@@ -18,7 +17,9 @@ interface LoginBaseProps {
 
 /**
  * Componente base reutilizable para Login (Socio/Admin)
- * Incluye icono dinámico, colores personalizables y animaciones suaves.
+ * — Gradiente dinámico corregido (sin warnings)
+ * — Animaciones suaves
+ * — Colores institucionales ENAP
  */
 const LoginBase: React.FC<LoginBaseProps> = ({
   role,
@@ -44,13 +45,15 @@ const LoginBase: React.FC<LoginBaseProps> = ({
 
   // 🧩 Icono según el rol
   const RoleIcon = role === "admin" ? Shield : UserCircle;
-  const iconBg =
-    role === "admin" ? "bg-[#E8F5E9]" : "bg-[#E0F7FA]"; // tono verde/agua claro
+  const iconBg = role === "admin" ? "bg-[#E8F5E9]" : "bg-[#E0F7FA]";
   const iconColor = role === "admin" ? "#00796B" : "#004D40";
 
   return (
     <section
-      className={`min-h-screen flex flex-col bg-gradient-to-br from-[${gradientFrom}] to-[${gradientTo}] text-white`}
+      className="min-h-screen flex flex-col text-white"
+      style={{
+        backgroundImage: `linear-gradient(to bottom right, ${gradientFrom}, ${gradientTo})`,
+      }}
     >
       <div className="flex-grow flex items-center justify-center px-4 py-10">
         <motion.div
@@ -70,7 +73,6 @@ const LoginBase: React.FC<LoginBaseProps> = ({
               transition={{ duration: 0.6 }}
             />
 
-            {/* 🎯 Ícono de rol */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}

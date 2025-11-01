@@ -1,6 +1,10 @@
 import React from "react";
 import LoginBase from "../../components/auth/LoginBase";
 
+/**
+ * Login del Panel de Administración
+ * — Colores institucionales (verde petróleo y verde oscuro)
+ */
 const LoginAdmin: React.FC = () => {
   return (
     <LoginBase
