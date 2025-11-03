@@ -1,27 +1,16 @@
 import React, { useState, useEffect, useCallback, FormEvent, useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { DollarSign, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { supabase, Espacio } from "../lib/supabase";
 import { useReserva } from "../context/ReservaContext";
 import { useNotificacion } from "../context/NotificacionContext";
+import { ymdLocal, parseYmdLocal } from "@/lib/date";
+import { clp } from "@/lib/format";
 
-/** Utils */
-const CLP = new Intl.NumberFormat("es-CL");
 const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1200&auto=format&fit=crop";
 
-const ymdLocal = (d = new Date()) => {
-  // YYYY-MM-DD en local time (evita TZ issues)
-  const year = d.getFullYear();
-  const month = `${d.getMonth() + 1}`.padStart(2, "0");
-  const day = `${d.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const parseLocal = (s?: string) => (s ? new Date(`${s}T00:00:00`) : null);
-
-/** 🧾 Formulario de creación de reservas */
 const ReservaForm: React.FC = () => {
   const prefersReducedMotion = useReducedMotion();
   const { id } = useParams();
@@ -33,12 +22,12 @@ const ReservaForm: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estado local de inputs (controlados)
+  // Inputs controlados
   const [fechaInicio, setFechaInicio] = useState<string>("");
   const [fechaFin, setFechaFin] = useState<string>("");
   const [personas, setPersonas] = useState<number>(1);
 
-  /** Fechas mínimas calculadas */
+  // Fechas mínimas
   const today = useMemo(() => ymdLocal(new Date()), []);
   const endMin = useMemo(() => (fechaInicio ? fechaInicio : today), [fechaInicio, today]);
 
@@ -46,11 +35,11 @@ const ReservaForm: React.FC = () => {
     if (!id) return;
     try {
       setLoading(true);
+      setError(null);
+
       const { data, error } = await supabase
         .from("espacios")
-        .select(
-          "id,nombre,tipo,tarifa,capacidad,descripcion,imagen,activo,created_at"
-        )
+        .select("id,nombre,tipo,tarifa,capacidad,descripcion,imagen,activo,created_at")
         .eq("id", id)
         .maybeSingle();
 
@@ -61,7 +50,6 @@ const ReservaForm: React.FC = () => {
         return;
       }
 
-      // ✅ cumplir totalmente con el tipo Espacio
       const espacioFull: Espacio = {
         id: data.id,
         nombre: data.nombre,
@@ -78,7 +66,7 @@ const ReservaForm: React.FC = () => {
       setReservaActual({
         espacioId: data.id,
         espacioNombre: data.nombre,
-        tarifa: data.tarifa ?? 0,
+        tarifa: espacioFull.tarifa,
       });
     } catch (err) {
       console.error("❌ Error al cargar espacio:", err);
@@ -89,25 +77,23 @@ const ReservaForm: React.FC = () => {
     }
   }, [id, agregarNotificacion, setReservaActual]);
 
-
   useEffect(() => {
     fetchEspacio();
   }, [fetchEspacio]);
 
-  /** 📅 Sincronizar formulario con el contexto (recalcula total) */
+  // Sincroniza formulario → contexto (para total en vivo)
   useEffect(() => {
     if (!espacio) return;
     setReservaActual({
       fechaInicio,
       fechaFin,
       personas,
-      tarifa: espacio.tarifa, // refuerza tarifa actual
+      tarifa: espacio.tarifa,
       espacioId: espacio.id,
       espacioNombre: espacio.nombre,
     });
   }, [fechaInicio, fechaFin, personas, espacio, setReservaActual]);
 
-  /** 💾 Confirmar reserva */
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!espacio) return;
@@ -117,9 +103,8 @@ const ReservaForm: React.FC = () => {
       return;
     }
 
-    // Validar rango de fechas y capacidad
-    const ini = parseLocal(fechaInicio)!;
-    const fin = parseLocal(fechaFin)!;
+    const ini = parseYmdLocal(fechaInicio)!;
+    const fin = parseYmdLocal(fechaFin)!;
     if (fin < ini) {
       agregarNotificacion("La fecha de fin no puede ser anterior al inicio.", "error");
       return;
@@ -127,10 +112,7 @@ const ReservaForm: React.FC = () => {
 
     const maxCap = espacio.capacidad ?? Infinity;
     if (personas < 1 || personas > maxCap) {
-      agregarNotificacion(
-        `Cantidad de personas inválida. Capacidad máxima: ${espacio.capacidad ?? 1}.`,
-        "error"
-      );
+      agregarNotificacion(`Cantidad de personas inválida. Capacidad máxima: ${espacio.capacidad ?? 1}.`, "error");
       return;
     }
 
@@ -143,26 +125,22 @@ const ReservaForm: React.FC = () => {
     navigate("/pago");
   };
 
-  /** 🖼️ Imagen con fallback */
   const onImageError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     if (img.src !== FALLBACK_IMG) img.src = FALLBACK_IMG;
   }, []);
 
-  /** 🚫 Sin ID → guía */
   if (!id) {
     return (
-      <section className="flex flex-col items-center justify-center min-h-[70vh] text-center">
-        <AlertTriangle className="text-[#DEC01F] mb-4" size={56} />
-        <h2 className="text-2xl font-bold text-[#002E3E] mb-3">
-          Selecciona un espacio para continuar con tu reserva
-        </h2>
-        <button
-          onClick={() => navigate("/espacios")}
-          className="mt-3 bg-[#002E3E] hover:bg-[#003B4D] text-white px-6 py-3 rounded-lg shadow-sm transition-colors"
+      <section className="flex min-h-[70vh] flex-col items-center justify-center text-center">
+        <AlertTriangle className="mb-4 text-[#DEC01F]" size={56} />
+        <h2 className="mb-3 text-2xl font-bold text-[#002E3E]">Selecciona un espacio para continuar con tu reserva</h2>
+        <Link
+          to="/espacios"
+          className="mt-3 rounded-lg bg-[#002E3E] px-6 py-3 text-white shadow-sm transition-colors hover:bg-[#003B4D]"
         >
           Ir a Espacios
-        </button>
+        </Link>
       </section>
     );
   }
@@ -171,7 +149,7 @@ const ReservaForm: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-[#002E3E]">
         <Loader2 className="animate-spin" size={48} />
-        <p className="text-sm text-gray-600 mt-3">Cargando información del espacio...</p>
+        <p className="mt-3 text-sm text-gray-600">Cargando información del espacio...</p>
       </div>
     );
   }
@@ -179,159 +157,166 @@ const ReservaForm: React.FC = () => {
   if (error || !espacio) {
     return (
       <section className="flex flex-col items-center justify-center py-24 text-center">
-        <AlertTriangle className="text-red-500 mb-4" size={48} />
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          {error || "Espacio no encontrado"}
-        </h2>
-        <button
-          onClick={() => navigate("/espacios")}
-          className="mt-4 bg-[#002E3E] hover:bg-[#003B4D] text-white px-6 py-3 rounded-lg shadow-sm transition-colors"
+        <AlertTriangle className="mb-4 text-red-500" size={48} />
+        <h2 className="mb-2 text-2xl font-bold text-gray-800">{error || "Espacio no encontrado"}</h2>
+        <Link
+          to="/espacios"
+          className="mt-4 rounded-lg bg-[#002E3E] px-6 py-3 text-white shadow-sm transition-colors hover:bg-[#003B4D]"
         >
           Volver a Espacios
-        </button>
+        </Link>
       </section>
     );
   }
 
-  const total = reservaActual?.total ?? 0;
-  const disabled =
-    !fechaInicio || !fechaFin || total <= 0 || personas < 1 || (espacio.capacidad ? personas > espacio.capacidad : false);
+// ✅ sin hooks, no rompe el orden
+const total = reservaActual?.total ?? 0;
+const capOk = espacio?.capacidad ? personas <= espacio.capacidad : true;
+const disabled = !fechaInicio || !fechaFin || total <= 0 || personas < 1 || !capOk;
+
 
   return (
     <main
-      className="min-h-[calc(100vh-120px)] bg-[#F9FAFB] py-12 px-6 flex flex-col items-center"
-      role="main"
+      id="main-content"
+      className="flex min-h-[calc(100vh-120px)] flex-col items-center bg-[#F9FAFB] px-6 py-12"
       aria-labelledby="reserva-title"
     >
-      <div className="max-w-7xl w-full">
+      <div className="w-full max-w-7xl">
         <button
+          type="button"
           onClick={() => navigate("/espacios")}
-          className="flex items-center gap-2 text-[#002E3E] hover:text-[#003B4D] mb-6 font-medium transition-colors"
+          className="mb-6 flex items-center gap-2 font-medium text-[#002E3E] transition-colors hover:text-[#003B4D]"
         >
           <ArrowLeft size={20} /> Volver a espacios
         </button>
 
-        <div className="grid md:grid-cols-2 gap-10">
-          {/* 🏡 Información del espacio */}
+        <div className="grid gap-10 md:grid-cols-2">
+          {/* Información del espacio */}
           <motion.article
             initial={prefersReducedMotion ? undefined : { opacity: 0, x: -20 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, x: 0 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
-            className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100"
+            className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md"
             aria-labelledby="reserva-title"
           >
-            <img
-              src={espacio.imagen || FALLBACK_IMG}
-              onError={onImageError}
-              alt={`Espacio ${espacio.nombre}`}
-              width={1280}
-              height={720}
-              className="w-full h-64 object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-            <div className="p-6 space-y-3">
+            <figure>
+              <img
+                src={espacio.imagen || FALLBACK_IMG}
+                onError={onImageError}
+                alt={`Espacio ${espacio.nombre}`}
+                width={1280}
+                height={720}
+                className="h-64 w-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+            <div className="space-y-3 p-6">
               <h2 id="reserva-title" className="text-2xl font-bold text-[#002E3E]">
                 {espacio.nombre}
               </h2>
               <p className="text-gray-600">
                 {espacio.descripcion || "Espacio disponible para reserva en Refinería Aconcagua."}
               </p>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>
-                  Tipo: <strong>{espacio.tipo}</strong>
-                </li>
-                <li>
-                  Capacidad: <strong>{espacio.capacidad ?? 1}</strong> personas
-                </li>
-                <li>
-                  Tarifa:{" "}
-                  <strong className="text-[#DEC01F]">
-                    ${CLP.format(espacio.tarifa)}/día
-                  </strong>
-                </li>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>Tipo: <strong>{espacio.tipo}</strong></li>
+                <li>Capacidad: <strong>{espacio.capacidad ?? 1}</strong> personas</li>
+                <li>Tarifa: <strong className="text-[#DEC01F]">{clp(espacio.tarifa)}/día</strong></li>
               </ul>
             </div>
           </motion.article>
 
-          {/* 📅 Formulario de reserva */}
+          {/* Formulario */}
           <motion.form
             onSubmit={handleSubmit}
             initial={prefersReducedMotion ? undefined : { opacity: 0, x: 20 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, x: 0 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
-            className="bg-white rounded-xl shadow-md p-6 space-y-6 border border-gray-100"
+            className="space-y-6 rounded-xl border border-gray-100 bg-white p-6 shadow-md"
             aria-describedby="form-ayuda"
+            noValidate
           >
             <h3 className="text-2xl font-bold text-[#002E3E]">Datos de la Reserva</h3>
-
             <p id="form-ayuda" className="text-xs text-gray-500">
               Ingresa fechas y cantidad de personas para calcular el total automáticamente.
             </p>
 
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">
+            <fieldset className="space-y-4">
+              <legend className="sr-only">Fechas de reserva</legend>
+
+              <label htmlFor="ini" className="block text-sm font-medium text-gray-700">
                 Fecha de Inicio
-                <input
-                  type="date"
-                  value={fechaInicio}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFechaInicio(val);
-                    // si fin es menor a inicio, lo ajustamos
-                    if (fechaFin && parseLocal(fechaFin)! < parseLocal(val)!) {
-                      setFechaFin(val);
-                    }
-                  }}
-                  min={today}
-                  required
-                  className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#002E3E]"
-                />
               </label>
+              <input
+                id="ini"
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFechaInicio(val);
+                  if (fechaFin && parseYmdLocal(fechaFin)! < parseYmdLocal(val)!) {
+                    setFechaFin(val);
+                  }
+                }}
+                min={today}
+                required
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-[#002E3E]"
+              />
 
-              <label className="block text-sm font-medium text-gray-700">
+              <label htmlFor="fin" className="block text-sm font-medium text-gray-700">
                 Fecha de Fin
-                <input
-                  type="date"
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
-                  min={endMin}
-                  required
-                  className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#002E3E]"
-                />
               </label>
+              <input
+                id="fin"
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                min={endMin}
+                required
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-[#002E3E]"
+              />
+            </fieldset>
 
-              <label className="block text-sm font-medium text-gray-700">
+            <fieldset className="space-y-4">
+              <legend className="sr-only">Cantidad de personas</legend>
+              <label htmlFor="personas" className="block text-sm font-medium text-gray-700">
                 Cantidad de Personas
-                <input
-                  type="number"
-                  value={personas}
-                  onChange={(e) => setPersonas(Math.max(1, Number(e.target.value) || 1))}
-                  min={1}
-                  {...(espacio.capacidad ? { max: espacio.capacidad } as any : {})}
-                  required
-                  className="w-full mt-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#002E3E]"
-                />
               </label>
-            </div>
+              <input
+                id="personas"
+                type="number"
+                inputMode="numeric"
+                value={personas}
+                onChange={(e) => setPersonas(Math.max(1, Number(e.target.value) || 1))}
+                min={1}
+                {...(espacio.capacidad ? ({ max: espacio.capacidad } as any) : {})}
+                required
+                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-[#002E3E]"
+              />
+            </fieldset>
 
-            <div className="bg-gray-50 p-4 rounded-lg flex items-center justify-between">
+            <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4">
               <span className="flex items-center gap-2 text-lg font-bold text-[#002E3E]">
                 <DollarSign size={22} /> Total
               </span>
-              <span className="text-[#DEC01F] font-bold text-xl">
-                ${CLP.format(total)}
-              </span>
+              {/* output semántico + aria-live para lectores de pantalla */}
+              <output
+                htmlFor="ini fin personas"
+                aria-live="polite"
+                className="text-xl font-bold text-[#DEC01F]"
+              >
+                {clp(total)}
+              </output>
             </div>
 
             <motion.button
               whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
               type="submit"
               disabled={disabled}
-              className={`w-full font-bold py-4 rounded-lg transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-[#DEC01F]/60 ${
+              className={`w-full rounded-lg py-4 font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-[#DEC01F]/60 ${
                 disabled
-                  ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                  : "bg-[#002E3E] hover:bg-[#003B4D] text-white"
+                  ? "cursor-not-allowed bg-gray-300 text-gray-600"
+                  : "bg-[#002E3E] text-white hover:bg-[#003B4D]"
               }`}
             >
               Confirmar Reserva
