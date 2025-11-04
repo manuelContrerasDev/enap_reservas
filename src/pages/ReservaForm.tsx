@@ -5,7 +5,7 @@ import { DollarSign, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { supabase, Espacio } from "../lib/supabase";
 import { useReserva } from "../context/ReservaContext";
 import { useNotificacion } from "../context/NotificacionContext";
-import { ymdLocal, parseYmdLocal } from "@/lib/date";
+import { ymdLocal, parseYmdLocal } from "@/lib";
 import { clp } from "@/lib/format";
 
 const FALLBACK_IMG =
