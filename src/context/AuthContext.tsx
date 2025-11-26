@@ -1,102 +1,191 @@
-import React, {
+import {
   createContext,
-  useContext,
   useState,
   useEffect,
   ReactNode,
+  useContext,
 } from "react";
-import { usuarios } from "../data/mock";
 
-/** 🎯 Tipos base */
-type UserRole = "socio" | "admin";
+const API_URL = import.meta.env.VITE_API_URL;
+
+// ======================================================
+// Tipos
+// ======================================================
+export type UserRole = "ADMIN" | "SOCIO" | "EXTERNO";
+
+const roleLabels: Record<UserRole, string> = {
+  ADMIN: "Administrador",
+  SOCIO: "Socio",
+  EXTERNO: "Invitado",
+};
+
+export interface User {
+  id: string;
+  name: string | null;
+  email: string;
+  role: UserRole;
+}
 
 interface AuthContextType {
-  userRole: UserRole | null;
-  userName: string | null;
-  login: (nombre: string, password: string) => boolean;
+  user: User | null;
+  token: string | null;
+  role: UserRole | null;
+
+  /** GETTERS derivados */
+  userRole: UserRole;
+  userName: string;
+
+  isAuthenticated: boolean;
+  isLoading: boolean;
+
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ ok: boolean; error?: string; user?: User }>;
+
   logout: () => void;
 }
 
-/** 🧱 Contexto */
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(
+  undefined
+);
 
-/** 🧩 Proveedor del contexto */
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
+// ======================================================
+// Notificaciones seguras
+// ======================================================
+function notifySafe(message: string, type: "success" | "error" | "info") {
+  try {
+    const { useNotificacion } = require("./NotificacionContext");
+    const ctx = useNotificacion();
+    ctx.agregarNotificacion(message, type);
+  } catch {
+    // Para evitar crash si se llama fuera del árbol
+  }
+}
 
-  /** 🔁 Cargar sesión previa al iniciar */
+// ======================================================
+// Provider
+// ======================================================
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("token")
+  );
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  /** GETTERS derivados (evita null-checks en UI) */
+  const userRole: UserRole = user?.role ?? "EXTERNO";
+  const userName: string = user?.name ?? "";
+
+  const isAuthenticated = !!token && !!user;
+
+  // ======================================================
+  // RESTORE SESSION → /auth/me
+  // ======================================================
   useEffect(() => {
-    const storedRole = localStorage.getItem("userRole");
-    const storedName = localStorage.getItem("userName");
-
-    if (storedRole && storedName) {
-      setUserRole(storedRole as UserRole);
-      setUserName(storedName);
-    }
-  }, []);
-
-  /** 🌐 Sincronizar entre pestañas */
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === "userRole" || event.key === "userName") {
-        const storedRole = localStorage.getItem("userRole");
-        const storedName = localStorage.getItem("userName");
-
-        // Si se eliminan los datos en otra pestaña, cerrar sesión localmente
-        if (!storedRole || !storedName) {
-          setUserRole(null);
-          setUserName(null);
-        } else {
-          setUserRole(storedRole as UserRole);
-          setUserName(storedName);
+    const restore = async () => {
+      try {
+        if (!token) {
+          setIsLoading(false);
+          return;
         }
+
+        const resp = await fetch(`${API_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok || !data.ok || !data.user) {
+          throw new Error("Sesión inválida");
+        }
+
+        setUser(data.user);
+        setRole(data.user.role);
+      } catch {
+        logout();
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+    restore();
+  }, [token]);
 
-  /** 🔐 Login simulado (usuarios mock) */
-  const login = (nombre: string, password: string): boolean => {
-    const user = usuarios.find(
-      (u) =>
-        u.nombre.toLowerCase() === nombre.toLowerCase() &&
-        u.password === password
-    );
+  // ======================================================
+  // LOGIN
+  // ======================================================
+  const login = async (email: string, password: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (user) {
-      setUserRole(user.rol);
-      setUserName(user.nombre);
-      localStorage.setItem("userRole", user.rol);
-      localStorage.setItem("userName", user.nombre);
-      return true;
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        return { ok: false, error: data.message || "Credenciales inválidas" };
+      }
+
+      localStorage.setItem("token", data.token);
+      setToken(data.token);
+
+      setUser(data.user);
+      setRole(data.user.role);
+
+      notifySafe("Bienvenido nuevamente", "success");
+
+      return { ok: true, user: data.user };
+    } catch {
+      return { ok: false, error: "Error de red" };
     }
-
-    return false;
   };
 
-  /** 🚪 Logout limpio */
-  const logout = (): void => {
-    setUserRole(null);
-    setUserName(null);
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("userName");
+  // ======================================================
+  // LOGOUT
+  // ======================================================
+  const logout = () => {
+    localStorage.removeItem("token");
+    setToken(null);
+    setUser(null);
+    setRole(null);
+
+    notifySafe("Sesión finalizada", "info");
   };
 
+  // ======================================================
+  // Render
+  // ======================================================
   return (
-    <AuthContext.Provider value={{ userRole, userName, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        role,
+
+        /** Derivados listos para UI */
+        userRole,
+        userName,
+
+        isAuthenticated,
+        isLoading,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-/** 🚀 Hook seguro y tipado */
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth debe usarse dentro de un <AuthProvider>");
-  }
-  return context;
+// ======================================================
+// Hook público
+// ======================================================
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth debe usarse dentro del AuthProvider");
+  return ctx;
 };

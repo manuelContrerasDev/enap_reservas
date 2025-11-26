@@ -1,40 +1,27 @@
-// src/routes/paths.ts
-
-/**
- * 🌐 Definición centralizada de rutas del sistema ENAP Limache.
- * ------------------------------------------------------------
- * Permite mantener consistencia entre componentes, navegación y roles.
- * Contiene tanto rutas públicas como privadas (socio/admin).
- */
-
 export const PATHS = {
-  // 🔓 PÚBLICAS
-  LOGIN: "/login",
-  LOGIN_SOCIO: "/login-socio",
-  LOGIN_ADMIN: "/login-admin",
-  OVERVIEW: "/overview",
+  // 🔓 PÚBLICAS (login + registro)
+  AUTH_LOGIN: "/auth/login",
+  AUTH_REGISTER: "/auth/registro",
 
-  // 👥 SOCIO
-  ESPACIOS: "/espacios",              // Listado de espacios disponibles
-  RESERVA: "/reserva",                // Formulario genérico de reserva
-  RESERVA_DETALLE: "/reservar/:id",   // Ruta dinámica con ID del espacio
-  PAGO: "/pago",                      // Página de pagos y confirmación
+  // 🔓 RECUPERACIÓN DE CONTRASEÑA
+  AUTH_RESET_REQUEST: "/auth/reset-request",
+  AUTH_RESET_CONFIRM: "/auth/reset-password", // viene con token por query
+
+  // 👥 SOCIO / INVITADO / ADMIN
+  ESPACIOS: "/espacios",
+  RESERVA: "/reserva",
+  RESERVA_DETALLE: "/reservar/:id",
+  PAGO: "/pago",
+
+  // 💳 PAGOS
+  PAGO_WEBPAY_RETORNO: "/pago/webpay/retorno",
+  PAGO_WEBPAY_FINAL: "/pago/webpay/final",
 
   // 🧑‍💼 ADMIN
-  ADMIN: "/admin",                    // Panel general administrativo
-  ADMIN_ESPACIOS: "/admin/espacios",  // Gestión de espacios
-  TESORERIA: "/tesoreria",            // Módulo financiero / control pagos
+  ADMIN: "/admin",
+  ADMIN_ESPACIOS: "/admin/espacios",
+  TESORERIA: "/tesoreria",
 
-  // 🚫 ERRORES
-  NOT_FOUND: "*",                     // Fallback 404
+  // 🚫 404
+  NOT_FOUND: "*",
 } as const;
-
-/**
- * 🧭 Ejemplo de uso:
- *
- * import { PATHS } from "@/routes/paths";
- * navigate(PATHS.RESERVA_DETALLE.replace(":id", espacio.id));
- *
- * o bien:
- * navigate(PATHS.RESERVA);
- */

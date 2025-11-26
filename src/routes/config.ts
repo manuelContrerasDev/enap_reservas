@@ -1,63 +1,60 @@
-// src/routes/config.ts
 import { PATHS } from "./paths";
 
-export type AppRole = "socio" | "admin";
+export type AppRole = "ADMIN" | "SOCIO" | "EXTERNO";
 
 export interface AppRoute {
   path: string;
   label: string;
-  icon?: string;                 // Debe existir en lucide-react
-  roles?: AppRole[];             // A qué roles aplica
-  showInNav?: boolean;           // ⬅️ si false, no aparece en el menú
+  icon?: string;
+  roles?: AppRole[];
+  showInNav?: boolean;
 }
 
-/**
- * Menú principal dinámico según rol
- */
 export const ROUTES: AppRoute[] = [
-  // 👥 Vista socio (solo mostramos "Espacios" en el menú)
   {
-    path: PATHS.ESPACIOS,        // /espacios
+    path: PATHS.ESPACIOS,
     label: "Espacios",
     icon: "MapPinned",
-    roles: ["socio", "admin"],   // también visible para admin si quieres acceder rápido
+    roles: ["SOCIO", "EXTERNO", "ADMIN"],
     showInNav: true,
-  },
-  {
-    path: PATHS.RESERVA,         // /reserva/:id (o similar)
-    label: "Reservar",
-    icon: "Calendar",
-    roles: ["socio"],
-    showInNav: false,            // ⬅️ se navega desde Espacios (no directo)
-  },
-  {
-    path: PATHS.PAGO,            // /pago
-    label: "Pago",
-    icon: "CreditCard",
-    roles: ["socio"],
-    showInNav: false,            // ⬅️ llega desde Reserva (no directo)
   },
 
-  // 🧑‍💼 Vista admin
   {
-    path: PATHS.ADMIN,           // /admin
+    path: PATHS.RESERVA,
+    label: "Reservar",
+    icon: "Calendar",
+    roles: ["SOCIO", "EXTERNO"],
+    showInNav: false,
+  },
+
+  {
+    path: PATHS.PAGO,
+    label: "Pago",
+    icon: "CreditCard",
+    roles: ["SOCIO", "EXTERNO"],
+    showInNav: false,
+  },
+
+  {
+    path: PATHS.ADMIN,
     label: "Reservas (Admin)",
     icon: "Calendar",
-    roles: ["admin"],
+    roles: ["ADMIN"],
     showInNav: true,
   },
   {
-    path: PATHS.ADMIN_ESPACIOS,  // /admin/espacios
+    path: PATHS.ADMIN_ESPACIOS,
     label: "Gestión de Espacios",
     icon: "Building2",
-    roles: ["admin"],
+    roles: ["ADMIN"],
     showInNav: true,
   },
   {
-    path: PATHS.TESORERIA,       // /tesoreria
+    path: PATHS.TESORERIA,
     label: "Tesorería",
     icon: "DollarSign",
-    roles: ["admin"],
+    roles: ["ADMIN"],
     showInNav: true,
   },
+  
 ];

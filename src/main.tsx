@@ -14,23 +14,27 @@ import { ReservaProvider } from "./context/ReservaContext";
 import { NotificacionProvider } from "./context/NotificacionContext";
 import { EspaciosProvider } from "./context/EspaciosContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { PagoProvider } from "./context/PagoContext";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <HelmetProvider>
       <BrowserRouter>
-        <AuthProvider>
-          <NotificacionProvider>
+        <NotificacionProvider>
+          <AuthProvider>
             <ReservaProvider>
               <EspaciosProvider>
                 <ThemeProvider>
-                  <App />
+                  <PagoProvider>
+                    <App />
+                  </PagoProvider>
                 </ThemeProvider>
               </EspaciosProvider>
             </ReservaProvider>
-          </NotificacionProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </NotificacionProvider>
       </BrowserRouter>
     </HelmetProvider>
   </React.StrictMode>
 );
+

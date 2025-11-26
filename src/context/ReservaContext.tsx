@@ -1,19 +1,96 @@
+// src/context/ReservaContext.tsx
 import {
-  createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode,
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  ReactNode,
+  useEffect,
 } from "react";
-import { supabase, Reserva } from "../lib/supabase";
-import { daysBetweenInclusive } from "@/lib/date";
 
-/** Tipos */
-export type EstadoReserva = "pendiente" | "confirmada" | "cancelada";
+import { useAuth } from "@/context/AuthContext";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
+/* ============================================================
+ * Tipos de dominio
+ * ============================================================ */
+export type EstadoReserva =
+  | "PENDIENTE"
+  | "CONFIRMADA"
+  | "CANCELADA"
+  | "RECHAZADA";
+
+export interface Reserva {
+  usuario: {
+    nombre: string;
+    email: string;
+  };
+
+  id: string;
+  espacioId: string;
+  espacioNombre: string;
+
+  fechaInicio: string; // ISO
+  fechaFin: string; // ISO
+  dias: number;
+
+  personas: number;
+  estado: EstadoReserva;
+  total: number;
+}
+
+/**
+ * Payload EXACTO que espera el backend ENAP
+ * (sin guests por ahora)
+ */
+export interface CrearReservaPayload {
+  espacioId: string;
+
+  fechaInicio: string; // yyyy-mm-dd
+  fechaFin: string; // yyyy-mm-dd
+
+  nombreSocio: string;
+  rutSocio: string;
+  telefonoSocio: string;
+  correoEnap: string;
+  correoPersonal?: string;
+
+  usoReserva: "USO_PERSONAL" | "CARGA_DIRECTA" | "TERCEROS";
+  socioPresente: boolean;
+
+  nombreResponsable?: string;
+  rutResponsable?: string;
+  emailResponsable?: string;
+
+  cantidadPersonas: number;
+
+  terminosAceptados: boolean; // siempre true al enviar
+  terminosVersion?: string;
+
+  invitados?:
+    | {
+        nombre: string;
+        rut: string;
+        edad?: number;
+      }[]
+    | undefined;
+}
+
+/**
+ * Estado interno para el formulario (cliente)
+ * usado por ReservaForm para cálculos y UI
+ */
 export interface ReservaFormData {
+  id?: string;
   espacioId: string;
   espacioNombre: string;
   tarifa: number;
-  fechaInicio: string; // YYYY-MM-DD
-  fechaFin: string;    // YYYY-MM-DD
+  fechaInicio: string;
+  fechaFin: string;
   personas: number;
+  dias: number;
   total: number;
 }
 
@@ -22,222 +99,303 @@ interface ReservaContextType {
   reservaActual: ReservaFormData | null;
   loading: boolean;
   error: string | null;
-  setReservaActual: (reserva: Partial<ReservaFormData> | null) => void;
-  agregarReserva: (usuario: string) => Promise<boolean>;
-  actualizarEstado: (id: string, nuevoEstado: EstadoReserva) => Promise<void>;
-  eliminarReserva: (id: string) => Promise<void>;
+
+  setReservaActual: (r: Partial<ReservaFormData> | null) => void;
+
+  /** Crea la reserva en backend y retorna el ID de la reserva (o null si falla) */
+  crearReservaEnServidor: (
+    payload: CrearReservaPayload
+  ) => Promise<string | null>;
+
+  /** Carga reservas según rol:
+   *  - SOCIO/INVITADO → /api/reservas/mias
+   *  - ADMIN → /api/reservas/admin
+   */
   cargarReservas: () => Promise<void>;
+
+  actualizarEstado: (id: string, estado: EstadoReserva) => Promise<void>;
+  eliminarReserva: (id: string) => Promise<void>;
 }
 
-/** Contexto */
-const ReservaContext = createContext<ReservaContextType | undefined>(undefined);
+/* ============================================================
+ * Contexto
+ * ============================================================ */
+const ReservaContext = createContext<ReservaContextType | undefined>(
+  undefined
+);
 
-/** Utils internos */
-function mergeReservaData(
-  prev: Partial<ReservaFormData> | null,
-  next: Partial<ReservaFormData>
-): ReservaFormData {
-  const base: ReservaFormData = {
-    espacioId: prev?.espacioId ?? "",
-    espacioNombre: prev?.espacioNombre ?? "",
-    tarifa: prev?.tarifa ?? 0,
-    fechaInicio: prev?.fechaInicio ?? "",
-    fechaFin: prev?.fechaFin ?? "",
-    personas: prev?.personas ?? 1,
-    total: prev?.total ?? 0,
-  };
-  return { ...base, ...next };
-}
+/* ============================================================
+ * Provider
+ * ============================================================ */
+export const ReservaProvider = ({ children }: { children: ReactNode }) => {
+  const { role, token } = useAuth();
 
-/** Provider */
-export const ReservaProvider = ({ children }: { children: React.ReactNode }) => {
   const [reservas, setReservas] = useState<Reserva[]>([]);
-  const [reservaActual, setReservaActualState] = useState<ReservaFormData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [reservaActual, setReservaActualState] =
+    useState<ReservaFormData | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** Cargar reservas (evita columnas hardcodeadas) */
-  const cargarReservas = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase
-        .from("reservas")
-        .select("*") // <-- sin columnas fijas
-        .order("created_at", { ascending: false });
+  /* ============================================================
+   * Limpieza automática de errores
+   * ============================================================ */
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(null), 3000);
+    return () => clearTimeout(timer);
+  }, [error]);
 
-      if (error) throw error;
-      setReservas((data ?? []) as unknown as Reserva[]);
-    } catch (err: any) {
-      console.error("❌ Error al cargar reservas:", err?.message || err);
+  /* ============================================================
+   * Setter inteligente para reservaActual
+   * ============================================================ */
+  const setReservaActual = useCallback(
+    (partial: Partial<ReservaFormData> | null) => {
+      if (!partial) {
+        setReservaActualState(null);
+        return;
+      }
+
+      setReservaActualState((prev) => {
+        const base: ReservaFormData = {
+          espacioId: partial.espacioId ?? prev?.espacioId ?? "",
+          espacioNombre: partial.espacioNombre ?? prev?.espacioNombre ?? "",
+          tarifa: partial.tarifa ?? prev?.tarifa ?? 0,
+          fechaInicio: partial.fechaInicio ?? prev?.fechaInicio ?? "",
+          fechaFin: partial.fechaFin ?? prev?.fechaFin ?? "",
+          personas: partial.personas ?? prev?.personas ?? 1,
+          dias: partial.dias ?? prev?.dias ?? 1,
+          total: partial.total ?? prev?.total ?? 0,
+          id: partial.id ?? prev?.id,
+        };
+
+        // 🔁 Si NO vino dias pero sí fechas → lo calculamos
+        if (!partial.dias && base.fechaInicio && base.fechaFin) {
+          const i = new Date(base.fechaInicio);
+          const f = new Date(base.fechaFin);
+          base.dias = Math.max(1, Math.ceil((+f - +i) / 86_400_000));
+        }
+
+        return base;
+      });
+    },
+    []
+  );
+
+  /* ============================================================
+   * Cargar reservas (SOCIO/INVITADO/ADMIN)
+   * ============================================================ */
+  const cargarReservas = useCallback(async () => {
+    if (!token) return;
+
+    setLoading(true);
+    try {
+      const endpoint =
+        role === "ADMIN" ? "/api/reservas/admin" : "/api/reservas/mias";
+
+      const resp = await fetch(`${API_URL}${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        throw new Error(data.error || "Error cargando reservas");
+      }
+
+      const rawReservas: any[] =
+        role === "ADMIN" ? data.data ?? [] : data.reservas ?? [];
+
+      const normalizadas: Reserva[] = rawReservas.map((r: any) => ({
+        usuario: {
+          nombre: r.user?.name ?? "",
+          email: r.user?.email ?? "",
+        },
+
+        id: r.id,
+        espacioId: r.espacio?.id ?? "",
+        espacioNombre: r.espacio?.nombre ?? "Espacio",
+
+        fechaInicio: r.fechaInicio,
+        fechaFin: r.fechaFin,
+
+        dias: r.dias ?? 1,
+        personas: r.cantidadPersonas ?? 1,
+
+        estado: r.estado as EstadoReserva,
+        total: r.totalClp ?? 0,
+      }));
+
+      setReservas(normalizadas);
+    } catch (e: any) {
+      console.error("❌ cargarReservas:", e);
+      setError(e.message ?? "Error cargando reservas");
       setReservas([]);
-      setError(err?.message ?? "No se pudo cargar reservas");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token, role]);
 
-  /** Realtime (INSERT/UPDATE/DELETE) + cleanup */
-  useEffect(() => {
-    cargarReservas();
+  /* ============================================================
+   * Crear reserva (SOCIO / INVITADO)
+   * ============================================================ */
+  const crearReservaEnServidor = useCallback(
+    async (payload: CrearReservaPayload): Promise<string | null> => {
+      if (!token) {
+        setError("No autenticado.");
+        return null;
+      }
 
-    const channel = supabase
-      .channel("rt-reservas")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "reservas" },
-        (payload) => {
-          try {
-            if (payload.eventType === "INSERT") {
-              const row = payload.new as Reserva;
-              setReservas((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
-            } else if (payload.eventType === "UPDATE") {
-              const row = payload.new as Reserva;
-              setReservas((prev) => prev.map((r) => (r.id === row.id ? row : r)));
-            } else if (payload.eventType === "DELETE") {
-              const row = payload.old as Pick<Reserva, "id">;
-              setReservas((prev) => prev.filter((r) => r.id !== row.id));
-            }
-          } catch (e) {
-            console.warn("⚠️ Handler realtime lanzó excepción:", e);
-          }
-        }
-      )
-      .subscribe((status) => {
-        // opcional: logging de estado del canal
-        // console.log("realtime channel status:", status);
-      });
+      setLoading(true);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [cargarReservas]);
-
-  /** Setter que recalcula total */
-  const setReservaActual = useCallback((partial: Partial<ReservaFormData> | null) => {
-    if (!partial) {
-      setReservaActualState(null);
-      return;
-    }
-    setReservaActualState((prev) => {
-      const merged = mergeReservaData(prev, partial);
-      const dias = daysBetweenInclusive(merged.fechaInicio, merged.fechaFin);
-      const personas = Math.max(1, Number.isFinite(merged.personas) ? merged.personas : 1);
-      const tarifa = Number.isFinite(merged.tarifa) ? merged.tarifa : 0;
-      const total = dias * tarifa * personas;
-      return { ...merged, total };
-    });
-  }, []);
-
-  /** Crear reserva
-   *  - selecciona la fila insertada para obtener los datos reales
-   *  - actualiza estado local (independiente del realtime)
-   */
-  const agregarReserva = useCallback(
-    async (usuario: string): Promise<boolean> => {
-      if (!reservaActual) return false;
       try {
-        const payload = {
-          usuario,
-          espacio_id: reservaActual.espacioId,
-          espacio_nombre: reservaActual.espacioNombre,
-          fecha_inicio: reservaActual.fechaInicio,
-          fecha_fin: reservaActual.fechaFin,
-          personas: reservaActual.personas,
-          total: reservaActual.total,
-          estado: "confirmada" as EstadoReserva,
-        };
+        const resp = await fetch(`${API_URL}/api/reservas`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
 
-        const { data, error } = await supabase
-          .from("reservas")
-          .insert([payload])
-          .select("*")
-          .single();
+        const data = await resp.json();
 
-        if (error) throw error;
-
-        if (data) {
-          // inserción inmediata en estado local por si el realtime no llega
-          setReservas((prev) => [data as unknown as Reserva, ...prev]);
+        if (!resp.ok || data.ok === false) {
+          throw new Error(
+            data.error || data.message || "No se pudo crear la reserva"
+          );
         }
 
-        return true;
-      } catch (err) {
-        console.error("❌ Error al crear reserva:", err);
-        return false;
+        const id: string | undefined = data.reserva?.id;
+        if (!id) {
+          throw new Error(
+            "Respuesta inválida del servidor (sin ID de reserva)"
+          );
+        }
+
+        await cargarReservas();
+        return id;
+      } catch (err: any) {
+        console.error("❌ crearReservaEnServidor:", err);
+        setError(err.message ?? "Error al crear la reserva");
+        return null;
+      } finally {
+        setLoading(false);
       }
     },
-    [reservaActual]
+    [token, cargarReservas]
   );
 
-  /** Update estado (optimista + fallback local) */
+  /* ============================================================
+   * ADMIN — Actualizar estado
+   * ============================================================ */
   const actualizarEstado = useCallback(
-    async (id: string, nuevoEstado: EstadoReserva) => {
-      const snapshot = reservas;
+    async (id: string, estado: EstadoReserva) => {
+      if (!token) {
+        setError("No autenticado.");
+        return;
+      }
+
       try {
-        setReservas((curr) =>
-          curr.map((r) =>
-            r.id === id ? { ...r, estado: nuevoEstado, updated_at: new Date().toISOString() } : r
-          )
+        const resp = await fetch(`${API_URL}/api/reservas/${id}/estado`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ estado }),
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || "Error al actualizar estado");
+
+        setReservas((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, estado } : r))
         );
-
-        const { data, error } = await supabase
-          .from("reservas")
-          .update({ estado: nuevoEstado, updated_at: new Date().toISOString() })
-          .eq("id", id)
-          .select("*")
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          // sincroniza con lo que devuelve la DB
-          setReservas((curr) => curr.map((r) => (r.id === id ? (data as Reserva) : r)));
-        }
-      } catch (err) {
-        console.error("❌ Error al actualizar estado:", err);
-        setReservas(snapshot); // rollback
+      } catch (err: any) {
+        console.error("❌ actualizarEstado:", err);
+        setError(err.message ?? "Error al actualizar estado");
+        throw err;
       }
     },
-    [reservas]
+    [token]
   );
 
-  /** Delete (optimista + rollback) */
+  /* ============================================================
+   * ADMIN — Eliminar reserva
+   * ============================================================ */
   const eliminarReserva = useCallback(
     async (id: string) => {
-      const snapshot = reservas;
+      if (!token) {
+        setError("No autenticado.");
+        return;
+      }
+
       try {
-        setReservas((curr) => curr.filter((r) => r.id !== id));
-        const { error } = await supabase.from("reservas").delete().eq("id", id);
-        if (error) throw error;
-      } catch (err) {
-        console.error("❌ Error al eliminar reserva:", err);
-        setReservas(snapshot);
+        const resp = await fetch(`${API_URL}/api/reservas/${id}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || "Error al eliminar reserva");
+
+        setReservas((prev) => prev.filter((r) => r.id !== id));
+      } catch (err: any) {
+        console.error("❌ eliminarReserva:", err);
+        setError(err.message ?? "Error al eliminar reserva");
+        throw err;
       }
     },
-    [reservas]
+    [token]
   );
 
-  const value = useMemo<ReservaContextType>(
+  /* ============================================================
+   * Memo
+   * ============================================================ */
+  const value = useMemo(
     () => ({
       reservas,
       reservaActual,
       loading,
       error,
+
       setReservaActual,
-      agregarReserva,
+      crearReservaEnServidor,
+      cargarReservas,
+
       actualizarEstado,
       eliminarReserva,
-      cargarReservas,
     }),
-    [reservas, reservaActual, loading, error, setReservaActual, agregarReserva, actualizarEstado, eliminarReserva, cargarReservas]
+    [
+      reservas,
+      reservaActual,
+      loading,
+      error,
+      setReservaActual,
+      crearReservaEnServidor,
+      cargarReservas,
+      actualizarEstado,
+      eliminarReserva,
+    ]
   );
 
-  return <ReservaContext.Provider value={value}>{children}</ReservaContext.Provider>;
+  return (
+    <ReservaContext.Provider value={value}>
+      {children}
+    </ReservaContext.Provider>
+  );
 };
 
-export const useReserva = (): ReservaContextType => {
+/* ============================================================
+ * Hook
+ * ============================================================ */
+export const useReserva = () => {
   const ctx = useContext(ReservaContext);
-  if (!ctx) throw new Error("useReserva debe usarse dentro de un <ReservaProvider>");
+  if (!ctx)
+    throw new Error("useReserva debe usarse dentro del ReservaProvider");
   return ctx;
 };

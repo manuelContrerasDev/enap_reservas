@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Reserva } from "@/lib/supabase";
+import type { Reserva } from "@/context/ReservaContext";
 import type { ReservaFilters } from "./useReservaFilters";
 
 const parseLocalDate = (s?: string) => {
@@ -17,15 +17,26 @@ export function useFilterReservas(reservas: Reserva[], f: ReservaFilters) {
     const fechaRef = parseLocalDate(f.fFecha);
 
     return reservas.filter((r) => {
-      const okUsuario = usuarioQ ? (r.usuario || "").toLowerCase().includes(usuarioQ) : true;
-      const okEspacio = espacioQ ? (r.espacio_nombre || "").toLowerCase().includes(espacioQ) : true;
+      // usuario: nombre + email
+      const userString = `${r.usuario?.nombre ?? ""} ${r.usuario?.email ?? ""}`.toLowerCase();
+      const okUsuario = usuarioQ ? userString.includes(usuarioQ) : true;
+
+      // espacio: ahora espacioNombre
+      const okEspacio = espacioQ
+        ? (r.espacioNombre ?? "").toLowerCase().includes(espacioQ)
+        : true;
+
+      // estado
       const okEstado = f.fEstado === "todas" ? true : r.estado === f.fEstado;
 
+      // fecha: ahora fechaInicio
       let okFecha = true;
       if (fechaRef) {
-        const fechaIni = new Date(r.fecha_inicio); // ISO desde Supabase
-        okFecha = f.fFechaOp === ">" ? fechaIni > fechaRef : fechaIni < fechaRef;
+        const fechaIni = new Date(r.fechaInicio);
+        okFecha =
+          f.fFechaOp === ">" ? fechaIni > fechaRef : fechaIni < fechaRef;
       }
+
       return okUsuario && okEspacio && okEstado && okFecha;
     });
   }, [reservas, f.fUsuario, f.fEspacio, f.fEstado, f.fFecha, f.fFechaOp]);

@@ -1,8 +1,7 @@
+
+/*
 // src/types/auth.d.ts
 export type UserRole = "cliente" | "ejecutivo" | "admin" | null;
-
-
-type UserRole = "socio" | "admin";
 
 interface AuthContextType {
   userRole: UserRole | null;
@@ -22,4 +21,4 @@ interface ReservaContextType {
   eliminarReserva: (id: string) => Promise<void>; // ✅ NUEVO
   cargarReservas: () => Promise<void>;
 }
-
+*/

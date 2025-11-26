@@ -1,230 +1,293 @@
+// src/context/EspaciosContext.tsx
 import {
   createContext,
   useContext,
   useState,
-  useEffect,
-  ReactNode,
   useCallback,
   useMemo,
+  useEffect,
+  ReactNode,
 } from "react";
-import { supabase } from "../lib/supabase";
 
-/** 🧾 Row real en BD (snake_case) */
-type DbEspacio = {
-  id: string;
-  nombre: string;
-  tipo: string;
-  tarifa: number;
-  capacidad: number | null;
-  descripcion: string | null;
-  imagen: string | null;
-  activo: boolean | null;
-  created_at: string | null;
-  updated_at?: string | null;
-};
+import { api } from "@/lib/axios";
+import { useAuth } from "@/context/AuthContext";
 
-/** 🎨 Modelo en UI (camelCase, con defaults) */
+import {
+  CrearEspacioType,
+  EditarEspacioType,
+} from "@/validators/espacio.schema";
+
+/* ===============================================
+ * INTERFACE PRINCIPAL — Espacio
+ * =============================================== */
 export interface Espacio {
   id: string;
   nombre: string;
   tipo: string;
-  tarifa: number;
-  capacidad?: number;
-  descripcion?: string;
-  imagen?: string;
-  activo?: boolean;
-  created_at?: string;
-  updated_at?: string;
+
+  capacidad: number;
+  capacidadExtra: number | null;
+
+  tarifaClp: number;
+  tarifaExterno: number | null;
+
+  extraSocioPorPersona: number | null;
+  extraTerceroPorPersona: number | null;
+
+  descripcion: string | null;
+  imagenUrl: string | null;
+
+  modalidadCobro: "POR_NOCHE" | "POR_DIA" | "POR_PERSONA";
+
+  activo: boolean;
+
+  createdAt: string;
+  updatedAt: string;
 }
 
-/** 🔁 Mapeos */
-const toEspacio = (row: DbEspacio): Espacio => ({
-  id: row.id,
-  nombre: row.nombre,
-  tipo: row.tipo,
-  tarifa: Number(row.tarifa ?? 0),
-  capacidad: row.capacidad ?? 1,
-  descripcion: row.descripcion ?? "Sin descripción disponible",
-  imagen: row.imagen ?? "",
-  activo: row.activo ?? true,
-  created_at: row.created_at ?? undefined,
-  updated_at: row.updated_at ?? undefined,
-});
-
-const fromInsert = (nuevo: Omit<Espacio, "id" | "created_at" | "updated_at">): Partial<DbEspacio> => ({
-  nombre: nuevo.nombre,
-  tipo: nuevo.tipo,
-  tarifa: Number(nuevo.tarifa ?? 0),
-  capacidad: nuevo.capacidad ?? 1,
-  descripcion: nuevo.descripcion ?? "Sin descripción disponible",
-  imagen: nuevo.imagen ?? "",
-  activo: nuevo.activo ?? true,
-});
-
-/** 🎛️ Interfaz de Contexto */
 interface EspaciosContextType {
   espacios: Espacio[];
   loading: boolean;
-  agregarEspacio: (nuevo: Omit<Espacio, "id" | "created_at" | "updated_at">) => Promise<void>;
-  editarEspacio: (id: string, cambios: Partial<Espacio>) => Promise<void>;
-  eliminarEspacio: (id: string) => Promise<void>;
-  cargarEspacios: () => Promise<void>;
+
+  cargarEspacios: (filters?: Record<string, any>) => Promise<void>;
+  crearEspacio: (data: CrearEspacioType) => Promise<Espacio | null>;
+  editarEspacio: (id: string, data: EditarEspacioType) => Promise<Espacio | null>;
+  eliminarEspacio: (id: string) => Promise<boolean>;
+  toggleActivo: (id: string) => Promise<Espacio | null>;
+  obtenerEspacio: (id: string) => Promise<Espacio | null>;
+  obtenerDisponibilidad: (
+    id: string
+  ) => Promise<{ fechaInicio: string; fechaFin: string }[]>;
 }
 
-/** 🧩 Crear Contexto */
-const EspaciosContext = createContext<EspaciosContextType | undefined>(undefined);
+const EspaciosContext = createContext<EspaciosContextType | undefined>(
+  undefined
+);
 
+/* ===============================================
+ * MAPPER DTO
+ * =============================================== */
+const toEspacioDTO = (e: any): Espacio => ({
+  id: e.id,
+  nombre: e.nombre,
+  tipo: e.tipo,
+
+  capacidad: e.capacidad,
+  capacidadExtra: e.capacidadExtra,
+
+  tarifaClp: e.tarifaClp,
+  tarifaExterno: e.tarifaExterno,
+
+  extraSocioPorPersona: e.extraSocioPorPersona,
+  extraTerceroPorPersona: e.extraTerceroPorPersona,
+
+  descripcion: e.descripcion,
+  imagenUrl: e.imagenUrl,
+
+  modalidadCobro: e.modalidadCobro,
+  activo: e.activo,
+
+  createdAt: e.createdAt,
+  updatedAt: e.updatedAt,
+});
+
+/* ===============================================
+ * PROVIDER
+ * =============================================== */
 export const EspaciosProvider = ({ children }: { children: ReactNode }) => {
+  const { role } = useAuth();
+
   const [espacios, setEspacios] = useState<Espacio[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  /** 🔁 Cargar espacios (una sola vez + cuando se invoque) */
-const cargarEspacios = useCallback(async () => {
-  try {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("espacios")
-      .select(
-        "id,nombre,tipo,tarifa,capacidad,descripcion,imagen,activo,created_at,updated_at"
-      )
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    const rows = (data ?? []) as unknown as DbEspacio[];
-    setEspacios(rows.map(toEspacio));
-  } catch (err) {
-    console.error("❌ Error al cargar espacios:", err);
-  } finally {
-    setLoading(false);
-  }
-}, []);
-
-
-  /** 📡 Realtime granular: INSERT/UPDATE/DELETE → actualiza estado sin refetch */
-  useEffect(() => {
-    cargarEspacios();
-
-    const channel = supabase
-      .channel("rt-espacios")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "espacios" },
-        (payload) => {
-          const row = payload.new as DbEspacio;
-          setEspacios((prev) => {
-            const e = toEspacio(row);
-            // dedupe por id y lo insertamos arriba para respetar orden por created_at desc
-            const without = prev.filter((x) => x.id !== e.id);
-            return [e, ...without];
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "espacios" },
-        (payload) => {
-          const row = payload.new as DbEspacio;
-          setEspacios((prev) => prev.map((x) => (x.id === row.id ? toEspacio(row) : x)));
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "DELETE", schema: "public", table: "espacios" },
-        (payload) => {
-          const row = payload.old as DbEspacio;
-          setEspacios((prev) => prev.filter((x) => x.id !== row.id));
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [cargarEspacios]);
-
-  /** ➕ Agregar espacio (sin refetch; RT lo sincroniza igualmente) */
-  const agregarEspacio = useCallback(
-    async (nuevo: Omit<Espacio, "id" | "created_at" | "updated_at">): Promise<void> => {
+  /* ============================================================
+   * GET — Cargar catálogo dinámico según rol
+   * ============================================================ */
+  const cargarEspacios = useCallback(
+    async (filters: Record<string, any> = {}) => {
       try {
-        const insertPayload = fromInsert(nuevo);
-        const { error } = await supabase.from("espacios").insert([insertPayload]);
-        if (error) throw error;
-        // RT INSERT actualizará el estado.
-      } catch (error) {
-        console.error("❌ Error al agregar espacio:", error);
-        throw error;
+        setLoading(true);
+
+        const endpoint = role === "ADMIN" ? "/espacios/admin" : "/espacios";
+
+        const res = await api.get<{ ok: boolean; data: any[] }>(endpoint, {
+          params: filters,
+        });
+
+        const data = res.data?.data ?? [];
+
+        setEspacios(
+          role === "ADMIN"
+            ? data.map(toEspacioDTO)
+            : data.filter((e) => e.activo).map(toEspacioDTO)
+        );
+      } catch (err) {
+        console.error("❌ Error al cargar espacios:", err);
+        setEspacios([]);
+      } finally {
+        setLoading(false);
       }
     },
-    []
+    [role]
   );
 
-  /** 📝 Editar espacio (optimista + RT lo confirmará) */
-  const editarEspacio = useCallback(
-    async (id: string, cambios: Partial<Espacio>): Promise<void> => {
+  useEffect(() => {
+    cargarEspacios();
+  }, [cargarEspacios]);
+
+  /* ============================================================
+   * POST — Crear espacio
+   * ============================================================ */
+  const crearEspacio = useCallback(
+    async (data: CrearEspacioType) => {
       try {
-        // actualización optimista
-        setEspacios((prev) =>
-          prev.map((x) => (x.id === id ? { ...x, ...cambios, updated_at: new Date().toISOString() } : x))
+        const res = await api.post<{ ok: boolean; data: any }>(
+          "/espacios",
+          data
         );
 
-        const allow: Partial<DbEspacio> = {
-          nombre: cambios.nombre,
-          tipo: cambios.tipo,
-          tarifa: cambios.tarifa,
-          capacidad: cambios.capacidad,
-          descripcion: cambios.descripcion,
-          imagen: cambios.imagen,
-          activo: cambios.activo,
-          updated_at: new Date().toISOString(),
-        };
+        if (!res.data?.ok) return null;
 
-        const { error } = await supabase.from("espacios").update(allow).eq("id", id);
-        if (error) throw error;
-        // RT UPDATE lo vuelve consistente si algo cambia en DB.
-      } catch (error) {
-        console.error("❌ Error al actualizar espacio:", error);
-        // revertir (en un caso real guardar snapshot para rollback)
         await cargarEspacios();
-        throw error;
+        return toEspacioDTO(res.data.data);
+      } catch (err) {
+        console.error("❌ Error al crear espacio:", err);
+        return null;
       }
     },
     [cargarEspacios]
   );
 
-  /** 🗑️ Eliminar espacio (optimista + RT DELETE confirmará) */
-  const eliminarEspacio = useCallback(async (id: string): Promise<void> => {
-    try {
-      // optimista
-      setEspacios((prev) => prev.filter((x) => x.id !== id));
-      const { error } = await supabase.from("espacios").delete().eq("id", id);
-      if (error) throw error;
-      // RT DELETE ya coincide con el estado.
-    } catch (error) {
-      console.error("❌ Error al eliminar espacio:", error);
-      await cargarEspacios();
-      throw error;
-    }
-  }, [cargarEspacios]);
+  /* ============================================================
+   * PUT — Editar espacio
+   * ============================================================ */
+  const editarEspacio = useCallback(
+    async (id: string, data: EditarEspacioType) => {
+      try {
+        const res = await api.put<{ ok: boolean; data: any }>(
+          `/espacios/${id}`,
+          data
+        );
 
-  /** 🔒 value memoizado para evitar renders en cascada */
-  const value = useMemo<EspaciosContextType>(
+        if (!res.data?.ok) return null;
+
+        await cargarEspacios();
+        return toEspacioDTO(res.data.data);
+      } catch (err) {
+        console.error("❌ Error al editar espacio:", err);
+        return null;
+      }
+    },
+    [cargarEspacios]
+  );
+
+  /* ============================================================
+   * DELETE — Soft delete
+   * ============================================================ */
+  const eliminarEspacio = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        const res = await api.delete<{ ok: boolean }>(`/espacios/${id}`);
+        await cargarEspacios();
+        return !!res.data?.ok;
+      } catch (err) {
+        console.error("❌ Error al eliminar espacio:", err);
+        return false;
+      }
+    },
+    [cargarEspacios]
+  );
+
+  /* ============================================================
+   * TOGGLE — Activar / Inactivar
+   * ============================================================ */
+  const toggleActivo = useCallback(
+    async (id: string): Promise<Espacio | null> => {
+      try {
+        const res = await api.patch<{ ok: boolean; data: any }>(
+          `/espacios/${id}/toggle`
+        );
+
+        if (!res.data?.ok || !res.data.data) return null;
+
+        await cargarEspacios();
+        return toEspacioDTO(res.data.data);
+      } catch (err) {
+        console.error("❌ Error al cambiar estado:", err);
+        return null;
+      }
+    },
+    [cargarEspacios]
+  );
+
+  /* ============================================================
+   * DETALLE
+   * ============================================================ */
+  const obtenerEspacio = useCallback(async (id: string) => {
+    try {
+      const res = await api.get<{ ok: boolean; data: any }>(
+        `/espacios/${id}`
+      );
+      return toEspacioDTO(res.data.data);
+    } catch (err) {
+      console.error("❌ Error al obtener espacio:", err);
+      return null;
+    }
+  }, []);
+
+  /* ============================================================
+   * DISPONIBILIDAD
+   * ============================================================ */
+  const obtenerDisponibilidad = useCallback(async (id: string) => {
+    try {
+      const res = await api.get<{
+        ok: boolean;
+        id: string;
+        fechas: { fechaInicio: string; fechaFin: string }[];
+      }>(`/espacios/${id}/disponibilidad`);
+
+      return res.data.fechas ?? [];
+    } catch (err) {
+      console.error("❌ Error al obtener disponibilidad:", err);
+      return [];
+    }
+  }, []);
+
+  const value = useMemo(
     () => ({
       espacios,
       loading,
-      agregarEspacio,
+      cargarEspacios,
+      crearEspacio,
       editarEspacio,
       eliminarEspacio,
-      cargarEspacios,
+      toggleActivo,
+      obtenerEspacio,
+      obtenerDisponibilidad,
     }),
-    [espacios, loading, agregarEspacio, editarEspacio, eliminarEspacio, cargarEspacios]
+    [
+      espacios,
+      loading,
+      cargarEspacios,
+      crearEspacio,
+      editarEspacio,
+      eliminarEspacio,
+      toggleActivo,
+      obtenerEspacio,
+      obtenerDisponibilidad,
+    ]
   );
 
-  return <EspaciosContext.Provider value={value}>{children}</EspaciosContext.Provider>;
+  return (
+    <EspaciosContext.Provider value={value}>
+      {children}
+    </EspaciosContext.Provider>
+  );
 };
 
-/** 🎯 Hook personalizado */
-export const useEspacios = (): EspaciosContextType => {
-  const context = useContext(EspaciosContext);
-  if (!context) throw new Error("useEspacios debe usarse dentro de un EspaciosProvider");
-  return context;
+export const useEspacios = () => {
+  const ctx = useContext(EspaciosContext);
+  if (!ctx)
+    throw new Error("useEspacios debe usarse dentro de EspaciosProvider");
+  return ctx;
 };
