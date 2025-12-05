@@ -1,3 +1,4 @@
+// src/components/reserva/TotalReservaForm.tsx
 import React from "react";
 import { DollarSign } from "lucide-react";
 import { clp } from "@/lib/format";

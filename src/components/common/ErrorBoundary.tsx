@@ -1,6 +1,4 @@
-// src/components/common/ErrorBoundary.tsx
 import React, { Component, ReactNode } from "react";
-
 import FallbackPage from "../../pages/errors/FallbackPage";
 
 interface ErrorBoundaryProps {
@@ -23,7 +21,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // 👉 Aquí puedes integrar un logger (Sentry, LogRocket, etc.)
     console.error("ErrorBoundary atrapó un error:", error, errorInfo);
   }
 

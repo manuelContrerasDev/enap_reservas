@@ -1,23 +1,14 @@
+// src/context/AuthContext.tsx
 import {
   createContext,
+  useContext,
   useState,
   useEffect,
   ReactNode,
-  useContext,
 } from "react";
+import { api } from "@/lib/axios";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-// ======================================================
-// Tipos
-// ======================================================
 export type UserRole = "ADMIN" | "SOCIO" | "EXTERNO";
-
-const roleLabels: Record<UserRole, string> = {
-  ADMIN: "Administrador",
-  SOCIO: "Socio",
-  EXTERNO: "Invitado",
-};
 
 export interface User {
   id: string;
@@ -26,150 +17,221 @@ export interface User {
   role: UserRole;
 }
 
+// ============================
+// Tipado seguro de respuesta
+// ============================
+interface LoginResponse {
+  ok: boolean;
+  message?: string;
+  code?: string; // ←🔥 FIX
+  token?: string;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+    role: string;
+  };
+}
+
+interface LoginResult {
+  ok: boolean;
+  error?: string;
+  user?: User;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
   role: UserRole | null;
-
-  /** GETTERS derivados */
-  userRole: UserRole;
-  userName: string;
-
   isAuthenticated: boolean;
   isLoading: boolean;
 
-  login: (
-    email: string,
-    password: string
-  ) => Promise<{ ok: boolean; error?: string; user?: User }>;
-
+  login: (email: string, password: string) => Promise<LoginResult>;
   logout: () => void;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
-
-// ======================================================
-// Notificaciones seguras
-// ======================================================
-function notifySafe(message: string, type: "success" | "error" | "info") {
-  try {
-    const { useNotificacion } = require("./NotificacionContext");
-    const ctx = useNotificacion();
-    ctx.agregarNotificacion(message, type);
-  } catch {
-    // Para evitar crash si se llama fuera del árbol
-  }
+interface MeResponse {
+  ok: boolean;
+  user?: {
+    id: string;
+    email: string;
+    name: string | null;
+    role: string;
+    createdAt: string;
+    emailConfirmed: boolean;
+  };
 }
 
-// ======================================================
-// Provider
-// ======================================================
+const STORAGE_TOKEN = "enap_token";
+const STORAGE_USER = "enap_user";
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem("token")
-  );
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  /** GETTERS derivados (evita null-checks en UI) */
-  const userRole: UserRole = user?.role ?? "EXTERNO";
-  const userName: string = user?.name ?? "";
-
-  const isAuthenticated = !!token && !!user;
-
-  // ======================================================
-  // RESTORE SESSION → /auth/me
-  // ======================================================
+  // ======================================
+  // Restaurar sesión inicial
+  // ======================================
   useEffect(() => {
-    const restore = async () => {
+    try {
+      const rawUser = localStorage.getItem(STORAGE_USER);
+      const rawToken = localStorage.getItem(STORAGE_TOKEN);
+
+      if (rawUser && rawToken) {
+        const parsed = JSON.parse(rawUser);
+
+        const normalizedUser: User = {
+          ...parsed,
+          role: (parsed.role || "").toUpperCase() as UserRole,
+        };
+
+        setUser(normalizedUser);
+        setToken(rawToken);
+
+        // Re-write por seguridad
+        localStorage.setItem(STORAGE_USER, JSON.stringify(normalizedUser));
+      }
+    } catch (err) {
+      console.error("[Auth] Error restaurando sesión:", err);
+      localStorage.removeItem(STORAGE_USER);
+      localStorage.removeItem(STORAGE_TOKEN);
+      setUser(null);
+      setToken(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // ======================================
+  // Validar token restaurado contra backend
+  // ======================================
+  useEffect(() => {
+    const validateSession = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        if (!token) {
-          setIsLoading(false);
-          return;
+        const resp = await api.get<MeResponse>("/auth/me");
+
+        if (resp.data.ok && resp.data.user) {
+          const normalized: User = {
+            ...resp.data.user,
+            role: resp.data.user.role.toUpperCase() as UserRole,
+          };
+
+          setUser(normalized);
+          localStorage.setItem(STORAGE_USER, JSON.stringify(normalized));
+        } else {
+          clearSession();
         }
-
-        const resp = await fetch(`${API_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const data = await resp.json();
-
-        if (!resp.ok || !data.ok || !data.user) {
-          throw new Error("Sesión inválida");
-        }
-
-        setUser(data.user);
-        setRole(data.user.role);
-      } catch {
-        logout();
+      } catch (err) {
+        console.warn("[Auth] Token inválido. Limpiando sesión.");
+        clearSession();
       } finally {
         setIsLoading(false);
       }
     };
 
-    restore();
+    validateSession();
   }, [token]);
 
-  // ======================================================
-  // LOGIN
-  // ======================================================
-  const login = async (email: string, password: string) => {
+
+
+  // ======================================
+  // Sync token → axios
+  // ======================================
+  useEffect(() => {
+    if (token) {
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete api.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
+
+  const role = user?.role ?? null;
+  const isAuthenticated = !!user && !!token;
+
+  // ======================================
+  // Helpers de sesión
+  // ======================================
+  const saveSession = (user: User, token: string) => {
+    const normalizedUser: User = {
+      ...user,
+      role: (user.role || "").toUpperCase() as UserRole,
+    };
+
+    setUser(normalizedUser);
+    setToken(token);
+
+    localStorage.setItem(STORAGE_USER, JSON.stringify(normalizedUser));
+    localStorage.setItem(STORAGE_TOKEN, token);
+  };
+
+  const clearSession = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem(STORAGE_USER);
+    localStorage.removeItem(STORAGE_TOKEN);
+  };
+
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<LoginResult> => {
+    setIsLoading(true);
+
     try {
-      const resp = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const resp = await api.post<LoginResponse>("/auth/login", {
+        email,
+        password,
       });
 
-      const data = await resp.json();
+      const data = resp.data;
 
-      if (!resp.ok || !data.ok) {
-        return { ok: false, error: data.message || "Credenciales inválidas" };
+      // Caso éxito total
+      if (data.ok && data.user && data.token) {
+        const normalizedUser: User = {
+          ...data.user,
+          role: (data.user.role || "").toUpperCase() as UserRole,
+        };
+
+        saveSession(normalizedUser, data.token);
+        setIsLoading(false);
+        return { ok: true, user: normalizedUser };
       }
 
-      localStorage.setItem("token", data.token);
-      setToken(data.token);
+      // Caso error del backend — devolver code exacto
+      setIsLoading(false);
+      return {
+        ok: false,
+        error: data.code || "UNKNOWN_ERROR",
+      };
 
-      setUser(data.user);
-      setRole(data.user.role);
+    } catch (err: any) {
+      setIsLoading(false);
 
-      notifySafe("Bienvenido nuevamente", "success");
+      // Capturar errores Axios con respuesta backend
+      if (err.response?.data?.code) {
+        return { ok: false, error: err.response.data.code };
+      }
 
-      return { ok: true, user: data.user };
-    } catch {
-      return { ok: false, error: "Error de red" };
+      return { ok: false, error: "CONNECTION_ERROR" };
     }
   };
 
-  // ======================================================
-  // LOGOUT
-  // ======================================================
-  const logout = () => {
-    localStorage.removeItem("token");
-    setToken(null);
-    setUser(null);
-    setRole(null);
+  const logout = () => clearSession();
 
-    notifySafe("Sesión finalizada", "info");
-  };
-
-  // ======================================================
-  // Render
-  // ======================================================
   return (
     <AuthContext.Provider
       value={{
         user,
         token,
         role,
-
-        /** Derivados listos para UI */
-        userRole,
-        userName,
-
         isAuthenticated,
         isLoading,
         login,
@@ -181,11 +243,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// ======================================================
-// Hook público
-// ======================================================
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth debe usarse dentro del AuthProvider");
+  if (!ctx) throw new Error("AuthContext no disponible");
   return ctx;
 };

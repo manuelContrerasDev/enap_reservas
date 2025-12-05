@@ -1,8 +1,10 @@
+// src/pages/admin/TesoreriaPage.tsx
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Navigate } from "react-router-dom";
 import { PATHS } from "@/routes/paths";
 import { Loader2, Filter, DollarSign } from "lucide-react";
+import { api } from "@/lib/axios";
 
 type PagoStatus = "created" | "pending" | "approved" | "rejected" | "cancelled";
 
@@ -30,6 +32,11 @@ interface PagoAdminDTO {
   };
 }
 
+/** Tipo fuerte de la respuesta del backend */
+interface PagosResponse {
+  pagos: PagoAdminDTO[];
+}
+
 const TesoreriaPage: React.FC = () => {
   const { role } = useAuth();
   const [pagos, setPagos] = useState<PagoAdminDTO[]>([]);
@@ -39,33 +46,27 @@ const TesoreriaPage: React.FC = () => {
 
   /** 🔐 Verificación de rol ADMIN */
   if (role !== "ADMIN") {
-    return <Navigate to={PATHS.ESPACIOS} replace />;
+    return <Navigate to={PATHS.APP_HOME} replace />;
   }
 
+  /**
+   * 📌 Cargar pagos (usando axios con token automático + tipado fuerte)
+   */
   const fetchPagos = async (estado?: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const params = new URLSearchParams();
-      if (estado) params.set("estado", estado);
+      const params = estado ? `?estado=${estado}` : "";
 
-      const resp = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/pagos/admin?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Error al cargar pagos");
+      /** Tipado seguro de la respuesta del backend */
+      const resp = await api.get<PagosResponse>(`/pagos/admin${params}`);
+      const data = resp.data;
 
       setPagos(data.pagos || []);
     } catch (err: any) {
-      console.error("❌ [TesoreriaPage]:", err);
-      setError(err.message);
+      console.error("❌ [TesoreriaPage ERROR]:", err);
+      setError(err.response?.data?.error || "Error al cargar pagos");
     } finally {
       setLoading(false);
     }
@@ -88,7 +89,7 @@ const TesoreriaPage: React.FC = () => {
               Tesorería — Pagos ENAP
             </h1>
             <p className="text-sm text-gray-600">
-              Resumen de pagos realizados por socios, filtrado por estado.
+              Resumen de pagos realizados por socios y externos.
             </p>
           </div>
 

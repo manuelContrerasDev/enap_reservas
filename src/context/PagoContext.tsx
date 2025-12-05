@@ -8,6 +8,9 @@ import {
   useCallback,
 } from "react";
 
+import { useReserva } from "@/context/ReservaContext";
+import { useAuth } from "@/context/AuthContext";
+
 interface CheckoutInitResponse {
   ok: boolean;
   pagoId?: string;
@@ -20,7 +23,7 @@ type EstadoPago = "idle" | "loading" | "redirecting" | "success" | "error";
 interface PagoContextType {
   estado: EstadoPago;
   mensaje: string | null;
-  iniciarPago: (reservaId: string) => Promise<void>;
+  iniciarPago: (reservaId: string, monto: number) => Promise<void>;
   resetPago: () => void;
 }
 
@@ -31,58 +34,58 @@ export const PagoProvider = ({ children }: { children: ReactNode }) => {
   const [estado, setEstado] = useState<EstadoPago>("idle");
   const [mensaje, setMensaje] = useState<string | null>(null);
 
-  /* ============================================================
-   * 🟦 Iniciar checkout Webpay
-   * ============================================================ */
-  const iniciarPago = useCallback(async (reservaId: string) => {
-    try {
-      if (estado === "loading" || estado === "redirecting") return;
+  const { token } = useAuth();
+  const { reservaActual } = useReserva();
 
-      setEstado("loading");
+  /* ============================================================
+   * 🟦 Iniciar checkout Webpay (CORREGIDO)
+   * ============================================================ */
+  const iniciarPago = useCallback(async (reservaId: string, monto: number) => {
+    try {
+      setEstado((prev) => (prev === "loading" ? prev : "loading"));
       setMensaje(null);
 
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("Tu sesión ha expirado. Vuelve a iniciar sesión.");
+      const authToken = token ?? localStorage.getItem("token");
+      if (!authToken) throw new Error("Tu sesión ha expirado. Inicia sesión nuevamente.");
+
+      if (!monto || monto <= 0) {
+        throw new Error("El monto del pago no es válido.");
+      }
 
       const resp = await fetch(`${API_URL}/api/pagos/checkout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ reservaId }),
+        body: JSON.stringify({
+          reservaId,
+          amountClp: monto, // 👈 ENVÍO DEL MONTO CORRECTO
+        }),
       });
 
       const data: CheckoutInitResponse = await resp.json();
 
       if (!resp.ok || !data.ok) {
-        console.error("❌ Error backend iniciarPago:", data);
         throw new Error(data.error ?? "No se pudo iniciar el pago Webpay.");
       }
 
       if (!data.checkoutUrl) {
-        throw new Error("No se recibió la URL de Webpay desde el servidor.");
+        throw new Error("El servidor no entregó la URL de Webpay.");
       }
 
-      // Estado previo al redirect
       setEstado("redirecting");
-
-      // Redirección hacia Webpay
       window.location.href = data.checkoutUrl;
-
     } catch (err: any) {
       console.error("❌ Error iniciarPago:", err);
 
       setEstado("error");
-      setMensaje(
-        err?.message ??
-          "Ocurrió un error desconocido al iniciar el proceso de pago."
-      );
+      setMensaje(err.message ?? "Error desconocido al iniciar el pago Webpay.");
     }
-  }, [estado]);
+  }, [token]);
 
   /* ============================================================
-   * 🔄 Reset manual (para reintentos)
+   * 🔄 Reset manual
    * ============================================================ */
   const resetPago = () => {
     setEstado("idle");
@@ -90,22 +93,12 @@ export const PagoProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <PagoContext.Provider
-      value={{
-        estado,
-        mensaje,
-        iniciarPago,
-        resetPago,
-      }}
-    >
+    <PagoContext.Provider value={{ estado, mensaje, iniciarPago, resetPago }}>
       {children}
     </PagoContext.Provider>
   );
 };
 
-/* ============================================================
- * Hook
- * ============================================================ */
 export const usePago = () => {
   const ctx = useContext(PagoContext);
   if (!ctx) throw new Error("usePago debe usarse dentro del PagoProvider");

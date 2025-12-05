@@ -1,3 +1,7 @@
+// ============================================================
+// DatosSocioForm.tsx — Sincronizado ENAP + Limpio RHF
+// ============================================================
+
 import React from "react";
 import {
   UseFormRegister,
@@ -27,7 +31,7 @@ const DatosSocioForm: React.FC<Props> = ({
   const correoPersonal = watch("correoPersonal") || "";
 
   const handle = (field: keyof ReservaFrontendType, value: string) => {
-    setValue(field, value, { shouldValidate: true });
+    setValue(field, value, { shouldValidate: true, shouldDirty: true });
   };
 
   return (
@@ -36,7 +40,7 @@ const DatosSocioForm: React.FC<Props> = ({
         Datos del Socio ENAP
       </h4>
 
-      {/* Nombre */}
+      {/* NOMBRE */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-gray-700">
           Nombre del socio
@@ -44,7 +48,6 @@ const DatosSocioForm: React.FC<Props> = ({
 
         <input
           type="text"
-          {...register("nombreSocio")}
           value={nombreSocio}
           onChange={(e) => handle("nombreSocio", e.target.value)}
           className="rounded-lg border px-3 py-2 text-sm"
@@ -56,12 +59,11 @@ const DatosSocioForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Rut + Teléfono */}
+      {/* RUT + TELÉFONO */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* RUT */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-700">
-            RUT del socio
-          </label>
+          <label className="text-xs font-medium text-gray-700">RUT del socio</label>
 
           <input
             type="text"
@@ -77,10 +79,9 @@ const DatosSocioForm: React.FC<Props> = ({
           )}
         </div>
 
+        {/* TELÉFONO */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-700">
-            Teléfono
-          </label>
+          <label className="text-xs font-medium text-gray-700">Teléfono</label>
 
           <input
             type="tel"
@@ -97,12 +98,12 @@ const DatosSocioForm: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Correos */}
+      {/* CORREOS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        {/* CORREO ENAP */}
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-700">
-            Correo ENAP
-          </label>
+          <label className="text-xs font-medium text-gray-700">Correo ENAP</label>
 
           <input
             type="email"
@@ -118,6 +119,7 @@ const DatosSocioForm: React.FC<Props> = ({
           )}
         </div>
 
+        {/* CORREO PERSONAL */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-700">
             Correo personal (opcional)
@@ -129,13 +131,11 @@ const DatosSocioForm: React.FC<Props> = ({
             value={correoPersonal}
             onChange={(e) => handle("correoPersonal", e.target.value)}
             className="rounded-lg border px-3 py-2 text-sm"
-            placeholder="Ej: felipe.c@gmail.cl"
+            placeholder="Ej: felipe.c@gmail.com"
           />
 
           {errors.correoPersonal && (
-            <p className="text-xs text-red-600">
-              {errors.correoPersonal.message}
-            </p>
+            <p className="text-xs text-red-600">{errors.correoPersonal.message}</p>
           )}
         </div>
       </div>

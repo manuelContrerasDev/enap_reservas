@@ -1,27 +1,57 @@
 export const PATHS = {
-  // 🔓 PÚBLICAS (login + registro)
+  /* =========================================================================
+   * 🔓 PÚBLICAS — Auth
+   * ========================================================================= */
   AUTH_LOGIN: "/auth/login",
-  AUTH_REGISTER: "/auth/registro",
-
-  // 🔓 RECUPERACIÓN DE CONTRASEÑA
+  AUTH_REGISTER: "/auth/register",
+  AUTH_CONFIRM: "/auth/confirm",
+  AUTH_EMAIL_SENT: "/auth/email-sent",
+  AUTH_LINK_EXPIRED: "/auth/link-expired",
+  AUTH_RESET_CONFIRM: "/auth/reset-confirm",
   AUTH_RESET_REQUEST: "/auth/reset-request",
-  AUTH_RESET_CONFIRM: "/auth/reset-password", // viene con token por query
+  AUTH_ALREADY_CONFIRMED: "/auth/already-confirmed",
+  AUTH_RESEND_CONFIRMATION: "/auth/resend-confirmation",
 
-  // 👥 SOCIO / INVITADO / ADMIN
-  ESPACIOS: "/espacios",
-  RESERVA: "/reserva",
-  RESERVA_DETALLE: "/reservar/:id",
-  PAGO: "/pago",
+  /* =========================================================================
+   * 🏠 HOME BASE (NO SE USA COMO PANTALLA)
+   * ========================================================================= */
+  APP_HOME: "/app/home",
 
-  // 💳 PAGOS
-  PAGO_WEBPAY_RETORNO: "/pago/webpay/retorno",
-  PAGO_WEBPAY_FINAL: "/pago/webpay/final",
+  /* =========================================================================
+   * 🏠 HOME POR ROL
+   * ========================================================================= */
+  SOCIO_HOME: "/app/espacios",
+  EXTERNO_HOME: "/app/espacios",
+  ADMIN_HOME: "/app/admin/reservas",
 
-  // 🧑‍💼 ADMIN
-  ADMIN: "/admin",
-  ADMIN_ESPACIOS: "/admin/espacios",
-  TESORERIA: "/tesoreria",
+  /* =========================================================================
+   * 👥 SOCIOS / EXTERNOS → ESPACIOS & RESERVAS
+   * ========================================================================= */
+  SOCIO_ESPACIOS: "/app/espacios",
+  SOCIO_ESPACIO_DETALLE: "/app/espacios/:id",
+  SOCIO_MIS_RESERVAS: "/app/mis-reservas",
 
-  // 🚫 404
+  /* RESERVAS */
+  RESERVA: "/app/reserva",
+  RESERVA_ID: "/app/reservar/:id",
+  RESERVA_PREVIEW: "/app/reserva/preview",
+
+  /* =========================================================================
+   * 💳 PAGOS
+   * ========================================================================= */
+  PAGO: "/app/pago",
+  PAGO_WEBPAY_RETORNO: "/app/pago/webpay/retorno",
+  PAGO_WEBPAY_FINAL: "/app/pago/webpay/final",
+
+  /* =========================================================================
+   * 🧑‍💼 ADMINISTRACIÓN
+   * ========================================================================= */
+  ADMIN: "/app/admin/reservas",
+  ADMIN_ESPACIOS: "/app/admin/espacios",
+  TESORERIA: "/app/admin/tesoreria",
+
+  /* =========================================================================
+   * 🧹 DEFAULT
+   * ========================================================================= */
   NOT_FOUND: "*",
 } as const;

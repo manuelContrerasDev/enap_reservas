@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Users, Info, CalendarDays } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Espacio } from "@/context/EspaciosContext";
+import { PATHS } from "@/routes/paths";
 
 const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1200&auto=format&fit=crop";
@@ -29,13 +30,14 @@ const EspacioCardSocio: React.FC<Props> = memo(
 
     const goToReserva = () => {
       if (!espacio.activo) return;
-      
-      if (fechaFiltro) {
-        navigate(`/reservar/${espacio.id}?fecha=${fechaFiltro}`);
-      } else {
-        navigate(`/reservar/${espacio.id}`);
-}
 
+      const base = PATHS.RESERVA_ID.replace(":id", espacio.id);
+
+      if (fechaFiltro) {
+        navigate(`${base}?fecha=${fechaFiltro}`);
+      } else {
+        navigate(base);
+      }
     };
 
     const puedeReservarDirecto =
@@ -49,16 +51,26 @@ const EspacioCardSocio: React.FC<Props> = memo(
     return (
       <motion.article
         aria-label={`Espacio ${espacio.nombre}`}
-        className="bg-white rounded-2xl shadow-md ring-1 ring-gray-200 hover:ring-[#DEC01F] transition-all overflow-hidden cursor-pointer focus-within:ring-2 focus-within:ring-[#002E3E]"
+        className="
+          group bg-white rounded-xl shadow-md border border-gray-100
+          hover:shadow-lg hover:border-[#00A3C4]
+          transition-all duration-200
+          overflow-hidden cursor-pointer
+          focus-within:ring-2 focus-within:ring-[#00B5D8]
+        "
         whileHover={!prefersReducedMotion ? { y: -4, scale: 1.01 } : undefined}
         onClick={goToReserva}
       >
-        {/* IMAGEN */}
+        {/* IMAGEN / HEADER */}
         <figure className="relative aspect-[16/9] overflow-hidden">
           <img
             src={espacio.imagenUrl || FALLBACK_IMG}
             alt={espacio.nombre}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="
+              h-full w-full object-cover
+              transition-transform duration-300
+              group-hover:scale-105
+            "
             onError={(e) => {
               if (e.currentTarget.src !== FALLBACK_IMG) {
                 e.currentTarget.src = FALLBACK_IMG;
@@ -66,30 +78,32 @@ const EspacioCardSocio: React.FC<Props> = memo(
             }}
           />
 
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
+          {/* Overlay degradado */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-          {/* Badges tipo + tarifa */}
+          {/* BARRA SUPERIOR BADGES */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
-            <span className="bg-white/90 text-[#002E3E] font-semibold px-3 py-1 text-[11px] rounded-full">
+            {/* Tipo de espacio */}
+            <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-white/95 text-[#003B4D] uppercase shadow-sm">
               {espacio.tipo}
             </span>
           </div>
 
+          {/* Tarifa */}
           <div className="absolute top-3 right-3">
-            <span className="bg-[#DEC01F]/95 text-[#002E3E] font-semibold px-3 py-1 text-[11px] rounded-full">
+            <span className="px-3 py-1 rounded-full text-[11px] font-semibold bg-[#FFD84D] text-[#003B4D] shadow-sm">
               {CLP.format(tarifa)} / día
             </span>
           </div>
 
-          {/* Badge de disponibilidad para la fecha seleccionada */}
+          {/* Badge disponibilidad */}
           {fechaLabel && (
             <div className="absolute bottom-3 left-3">
               <span
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] ${
+                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] border backdrop-blur-sm ${
                   ocupadoEnFecha
-                    ? "bg-red-100 text-red-700 border border-red-200"
-                    : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                    ? "bg-red-100/90 text-red-700 border-red-200"
+                    : "bg-emerald-100/90 text-emerald-700 border-emerald-200"
                 }`}
               >
                 <CalendarDays size={12} />
@@ -101,61 +115,60 @@ const EspacioCardSocio: React.FC<Props> = memo(
           )}
         </figure>
 
-        {/* INFO */}
+        {/* CONTENIDO */}
         <div className="p-5 flex flex-col gap-3">
-          <h3 className="text-lg font-bold text-[#002E3E] line-clamp-2">
+          {/* Nombre */}
+          <h3 className="text-lg font-bold text-[#002E3E] leading-snug line-clamp-2">
             {espacio.nombre}
           </h3>
 
+          {/* Descripción */}
           <p className="text-sm text-gray-600 line-clamp-2">
             {espacio.descripcion ||
-              "Espacio disponible para reserva de socios ENAP."}
+              "Espacio disponible para reservas de socios ENAP."}
           </p>
 
+          {/* Capacidad */}
           <div className="flex items-center gap-2 text-sm text-gray-700">
-            <Users size={16} className="text-[#002E3E]" aria-hidden="true" />
+            <Users size={16} className="text-[#005D73]" />
             <span>
-              Capacidad: <strong>{espacio.capacidad}</strong>
+              Capacidad:{" "}
+              <strong className="font-semibold">{espacio.capacidad}</strong>
             </span>
-            {espacio.capacidadExtra ? (
+            {espacio.capacidadExtra && (
               <span className="text-xs text-gray-500">
                 (+{espacio.capacidadExtra} extra)
               </span>
-            ) : null}
+            )}
           </div>
 
+          {/* Estado inactivo */}
           {!espacio.activo && (
-            <div className="flex items-center gap-2 text-red-600 text-xs mt-1">
-              <Info size={14} aria-hidden="true" />
+            <div className="flex items-center gap-2 text-xs mt-1 text-red-600">
+              <Info size={14} />
               <span>Este espacio está temporalmente inactivo.</span>
             </div>
           )}
 
-          {/* BOTÓN */}
+          {/* BOTÓN PRINCIPAL */}
           <motion.button
             type="button"
-            aria-label={
-              !espacio.activo
-                ? `Espacio ${espacio.nombre} no disponible`
-                : fechaFiltro && ocupadoEnFecha
-                ? `Espacio ${espacio.nombre} ocupado el ${fechaLabel}`
-                : `Reservar espacio ${espacio.nombre}`
-            }
             aria-disabled={!puedeReservarDirecto}
             disabled={!puedeReservarDirecto}
             whileTap={!prefersReducedMotion ? { scale: 0.97 } : undefined}
-            className={`mt-3 w-full font-semibold px-4 py-2.5 rounded-lg text-sm
-            ${
-              puedeReservarDirecto
-                ? "bg-[#002E3E] text-white hover:bg-[#01384A]"
-                : "bg-gray-300 text-gray-600 cursor-not-allowed"
-            }
-          `}
+            className={`
+              mt-3 w-full px-4 py-2.5 rounded-lg text-sm font-semibold
+              flex items-center justify-center gap-2
+              transition-all duration-200
+              ${
+                puedeReservarDirecto
+                  ? "bg-[#01546B] hover:bg-[#016A85] text-white shadow-sm"
+                  : "bg-gray-200 text-gray-500 cursor-not-allowed"
+              }
+            `}
             onClick={(e) => {
               e.stopPropagation();
-              if (puedeReservarDirecto) {
-                goToReserva();
-              }
+              if (puedeReservarDirecto) goToReserva();
             }}
           >
             {!espacio.activo
@@ -165,10 +178,10 @@ const EspacioCardSocio: React.FC<Props> = memo(
               : "Reservar"}
           </motion.button>
 
+          {/* Mensaje adicional cuando está ocupado */}
           {fechaFiltro && ocupadoEnFecha && (
             <p className="mt-1 text-[11px] text-gray-500">
-              Puedes ingresar al detalle para revisar otras fechas de reserva
-              disponibles.
+              Haz clic para revisar disponibilidad en otras fechas.
             </p>
           )}
         </div>

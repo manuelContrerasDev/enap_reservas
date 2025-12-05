@@ -1,10 +1,7 @@
 import React, { useState, useCallback } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LogOut, Sun, Moon } from "lucide-react";
-import * as Icons from "lucide-react";
 
-import { ROUTES } from "../../routes/config";
 import { PATHS } from "../../routes/paths";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
@@ -23,176 +20,110 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const { userRole, userName, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  
+  const isDark = theme === "dark";
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const navigate = useNavigate();
-
-  const role = userRole;
-
-  /** Filtrar rutas según permisos */
-  const accessibleRoutes = ROUTES.filter(
-    (route) => !route.roles || (role && route.roles.includes(role))
-  );
 
   const handleLogout = useCallback(() => {
     if (confirm("¿Seguro que deseas cerrar sesión?")) {
       logout();
-      navigate(PATHS.AUTH_LOGIN);
+      window.location.href = PATHS.AUTH_LOGIN;
     }
-  }, [logout, navigate]);
-
-  const isDark = theme === "dark";
+  }, [logout]);
 
   return (
     <motion.header
       variants={variants.header}
       initial="initial"
       animate="animate"
-      className={`shadow-md sticky top-0 z-50 border-b border-[#DEC01F]/40 ${
-        isDark
-          ? "bg-[#001C26] text-white"
-          : "bg-gradient-to-r from-[#002E3E] via-[#003B4D] to-[#00475A] text-white"
-      }`}
+      className={`
+        sticky top-0 z-50 shadow-md border-b border-enap-primary/30
+        ${isDark 
+          ? "bg-[#001C26] text-white" 
+          : "bg-gradient-to-r from-[#002E3E] via-[#005D73] to-[#0091B7] text-white"
+        }
+      `}
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-5 py-4">
-        
-        {/* Logo */}
-        <div
-          className="flex items-center gap-3 cursor-pointer"
-          onClick={() => navigate(PATHS.ESPACIOS)}
-        >
+      <div className="flex items-center justify-between px-4 py-2 max-w-full">
+
+        {/* LOGO + IDENTIDAD */}
+        <div className="flex items-center gap-2">
           <img
             src={logoEnap}
-            alt="Logo ENAP"
-            className="w-12 h-auto bg-white rounded-md p-1.5 shadow-sm"
+            alt="ENAP"
+            className="w-10 h-auto bg-white rounded-md p-1.5 shadow"
           />
           <div>
-            <h1 className="text-lg font-semibold">ENAP Reservas</h1>
-            <p className="text-xs text-[#C7D9DC]">
-              {role === "ADMIN"
-                ? "Panel Administrativo"
-                : "Sistema de Reservas y Pagos"}
+            <h1 className="font-semibold text-sm md:text-base tracking-wide">
+              ENAP Reservas
+            </h1>
+            <p className="text-xs text-white/70">
+              {userRole === "ADMIN" ? "Panel Administrativo" : "Portal Socios"}
             </p>
           </div>
         </div>
 
-        {/* Extra actions (botón INVITAR) */}
+        {/* ACCIÓN EXTRA (solo desktop) */}
         {extraActions && (
-          <div className="hidden md:flex items-center mr-4">{extraActions}</div>
+          <div className="hidden md:flex">
+            {extraActions}
+          </div>
         )}
 
-        {/* Mobile toggle */}
-        <button
-          onClick={() => setMenuOpen((p) => !p)}
-          className="md:hidden p-2 rounded-md hover:bg-white/10"
-        >
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {/* CONTROLES (tema + usuario + salir) */}
+        <div className="flex items-center gap-3">
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center space-x-6">
-          {accessibleRoutes.map(({ path, label, icon }) => {
-            const Icon = icon ? (Icons as any)[icon] : null;
-
-            return (
-              <NavLink
-                key={path}
-                to={path.replace(":id", "")}
-                onClick={onRouteChange}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 px-3 py-2 rounded-md ${
-                    isActive
-                      ? "bg-[#DEC01F] text-[#002E3E]"
-                      : "hover:bg-white/10 text-white"
-                  }`
-                }
-              >
-                {Icon && <Icon size={18} />}
-                <span>{label}</span>
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* User settings */}
-        <div className="hidden md:flex items-center gap-4">
+          {/* Toggle tema */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-md bg-white/10 hover:bg-white/20"
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition"
           >
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          <span className="text-sm text-[#F0F0F0]">
-            {userName} ({role})
+          {/* Usuario */}
+          <span className="hidden sm:block text-xs md:text-sm font-medium">
+            {userName} ({userRole})
           </span>
 
+          {/* Logout */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 bg-[#DEC01F] text-[#002E3E] px-3 py-1.5 rounded-md hover:bg-[#E8CF4F]"
+            className="
+              flex items-center gap-1.5
+              bg-enap-primary text-[#003B4D]
+              px-3 py-1.5 rounded-md
+              font-semibold text-xs md:text-sm
+              hover:bg-enap-accent
+            "
           >
             <LogOut size={16} />
-            Salir
+            <span className="hidden sm:inline">Salir</span>
           </button>
+
+          {/* Mobile toggle (solo SOCIO / móvil) */}
+          {extraActions && (
+            <button
+              onClick={() => setMenuOpen((p) => !p)}
+              className="md:hidden p-2 rounded-md bg-white/10 hover:bg-white/20"
+            >
+              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* MOBILE extraActions */}
       <AnimatePresence>
-        {menuOpen && (
-          <motion.nav
-            variants={variants.menuMobile}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className={`md:hidden border-t border-white/10 ${
-              isDark ? "bg-[#001C26]" : "bg-[#002E3E]"
-            }`}
+        {menuOpen && extraActions && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="md:hidden bg-[#003B4D] border-t border-white/10 px-4 py-3"
           >
-            <ul className="flex flex-col px-4 py-3 space-y-2">
-              
-              {extraActions && <li>{extraActions}</li>}
-
-              {accessibleRoutes.map(({ path, label, icon }) => {
-                const Icon = icon ? (Icons as any)[icon] : null;
-
-                return (
-                  <li key={path}>
-                    <NavLink
-                      to={path.replace(":id", "")}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onRouteChange();
-                      }}
-                      className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/10 text-white"
-                    >
-                      {Icon && <Icon size={18} />}
-                      <span>{label}</span>
-                    </NavLink>
-                  </li>
-                );
-              })}
-
-              <li className="border-t border-white/20 pt-2 mt-2 flex justify-between">
-                
-                <button
-                  onClick={toggleTheme}
-                  className="flex-1 py-2 text-white hover:bg-white/10 rounded-md"
-                >
-                  {isDark ? "Modo claro" : "Modo oscuro"}
-                </button>
-
-                <button
-                  onClick={handleLogout}
-                  className="flex-1 bg-[#DEC01F] text-[#002E3E] rounded-md py-2 ml-2 hover:bg-[#E8CF4F]"
-                >
-                  Salir
-                </button>
-
-              </li>
-            </ul>
-          </motion.nav>
+            {extraActions}
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.header>

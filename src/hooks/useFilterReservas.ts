@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Reserva } from "@/context/ReservaContext";
+import type { ReservaFrontend } from "@/types/ReservaFrontend";
 import type { ReservaFilters } from "./useReservaFilters";
 
 const parseLocalDate = (s?: string) => {
@@ -9,8 +9,8 @@ const parseLocalDate = (s?: string) => {
   return new Date(y, m - 1, d, 0, 0, 0, 0);
 };
 
-/** Aplica filtros (usuario, espacio, estado y fecha) */
-export function useFilterReservas(reservas: Reserva[], f: ReservaFilters) {
+/** Aplica filtros a reservas (usuario, espacio, estado, fecha) */
+export function useFilterReservas(reservas: ReservaFrontend[], f: ReservaFilters) {
   return useMemo(() => {
     const usuarioQ = f.fUsuario.trim().toLowerCase();
     const espacioQ = f.fEspacio.trim().toLowerCase();
@@ -29,7 +29,7 @@ export function useFilterReservas(reservas: Reserva[], f: ReservaFilters) {
       // estado
       const okEstado = f.fEstado === "todas" ? true : r.estado === f.fEstado;
 
-      // fecha: ahora fechaInicio
+      // fecha (fechaInicio)
       let okFecha = true;
       if (fechaRef) {
         const fechaIni = new Date(r.fechaInicio);

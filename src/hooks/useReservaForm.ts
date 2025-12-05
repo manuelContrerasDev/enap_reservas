@@ -1,6 +1,5 @@
 // =====================================================================
-// useReservaForm.ts — Hook maestro del flujo de reservas ENAP
-// Profesionalizado + Sincronizado con backend + Validaciones reales
+// useReservaForm.ts — Hook maestro del flujo ENAP (VERSIÓN TIPADA OK)
 // =====================================================================
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -12,20 +11,19 @@ import { useAuth } from "@/context/AuthContext";
 import { useReserva } from "@/context/ReservaContext";
 import { useNotificacion } from "@/context/NotificacionContext";
 import { useEspacios, type Espacio } from "@/context/EspaciosContext";
-import { TipoEspacio, useCalcularReserva } from "@/hooks/useCalcularReserva";
-
 
 import {
   reservaFrontendSchema,
   type ReservaFrontendType,
 } from "@/validators/reserva.schema";
 
-import { useForm } from "react-hook-form";
+import { PATHS } from "@/routes/paths";
+
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// ============================================================
-// Tipos auxiliares
-// ============================================================
+// ------------------------------------------------------------
+
 interface BloqueFecha {
   fechaInicio: string;
   fechaFin: string;
@@ -33,9 +31,11 @@ interface BloqueFecha {
 
 const FORM_KEY = "reservaDraftEnap";
 
-// ============================================================
-// Hook principal
-// ============================================================
+// 👉 Alias simple: el formulario ES el schema
+type ReservaFormValues = ReservaFrontendType;
+
+// ------------------------------------------------------------
+
 export function useReservaForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -45,7 +45,6 @@ export function useReservaForm() {
   const { agregarNotificacion } = useNotificacion();
 
   const { obtenerEspacio, obtenerDisponibilidad } = useEspacios();
-  const { calcular } = useCalcularReserva();
 
   const [espacio, setEspacio] = useState<Espacio | null>(null);
   const [bloquesOcupados, setBloquesOcupados] = useState<BloqueFecha[]>([]);
@@ -55,33 +54,44 @@ export function useReservaForm() {
   const today = useMemo(() => ymdLocal(new Date()), []);
 
   // ============================================================
-  // RHF + ZOD
+  // RHF
   // ============================================================
+
   const {
     register,
     watch,
     setValue,
     handleSubmit,
     formState: { errors },
-  } = useForm<ReservaFrontendType>({
+  } = useForm<ReservaFormValues>({
     resolver: zodResolver(reservaFrontendSchema),
     defaultValues: {
       usoReserva: "USO_PERSONAL",
       socioPresente: true,
       cantidadPersonas: 1,
+      cantidadPersonasPiscina: 0,
       correoPersonal: "",
       terminosAceptados: false,
 
       nombreSocio: "",
       rutSocio: "",
       telefonoSocio: "",
+
+      fechaInicio: "",
+      fechaFin: "",
     },
   });
 
+  // ============================================================
   // Campos reactivos
+  // ============================================================
+
   const fechaInicio = watch("fechaInicio");
   const fechaFin = watch("fechaFin");
+
   const personas = Number(watch("cantidadPersonas") ?? 1);
+  const personasPiscina = Number(watch("cantidadPersonasPiscina") ?? 0);
+
   const socioPresente = watch("socioPresente");
   const usoReserva = watch("usoReserva");
 
@@ -94,6 +104,7 @@ export function useReservaForm() {
   // ============================================================
   // Fetch espacio + disponibilidad
   // ============================================================
+
   const fetchEspacio = useCallback(async () => {
     try {
       if (!id) {
@@ -101,6 +112,13 @@ export function useReservaForm() {
         setLoading(false);
         return;
       }
+
+      // 🔄 Reset form al entrar a un espacio nuevo
+      localStorage.removeItem(FORM_KEY);
+      setValue("fechaInicio", "");
+      setValue("fechaFin", "");
+      setValue("cantidadPersonas", 1);
+      setValue("cantidadPersonasPiscina", 0);
 
       setLoading(true);
       setError(null);
@@ -120,11 +138,9 @@ export function useReservaForm() {
       setEspacio(data);
       setBloquesOcupados(disponibilidad ?? []);
 
-      // sincronizar contexto reserva
       setReservaActual({
         espacioId: data.id,
         espacioNombre: data.nombre,
-        tarifa: data.tarifaClp,
       });
 
       setValue("espacioId", data.id);
@@ -143,8 +159,9 @@ export function useReservaForm() {
   }, [fetchEspacio]);
 
   // ============================================================
-  // Prefill datos del socio autenticado
+  // Prefill socio
   // ============================================================
+
   useEffect(() => {
     if (!user) return;
 
@@ -152,96 +169,76 @@ export function useReservaForm() {
     setValue("correoEnap", user.email ?? "");
     setValue("correoPersonal", user.email ?? "");
 
-    // en caso de tener rut / telefono en perfil
     if ((user as any).rut) setValue("rutSocio", (user as any).rut);
     if ((user as any).telefono) setValue("telefonoSocio", (user as any).telefono);
   }, [user, setValue]);
 
   // ============================================================
-  // Cálculo total
+  // Cálculo total (por ahora solo días; puedes ajustar lógica ENAP aquí)
   // ============================================================
+
   const { dias, total } = useMemo(() => {
-    if (!espacio || !fechaInicio || !fechaFin) {
+    if (!espacio || !fechaInicio || !fechaFin)
       return { dias: 0, total: 0 };
-    }
 
     const ini = parseYmdLocal(fechaInicio);
     const fin = parseYmdLocal(fechaFin);
 
-    if (!(ini instanceof Date) || !(fin instanceof Date)) {
+    if (!(ini instanceof Date) || !(fin instanceof Date))
       return { dias: 0, total: 0 };
-    }
-    if (fin < ini) {
+
+    if (fin <= ini)
       return { dias: 0, total: 0 };
-    }
 
     const diffMs = fin.getTime() - ini.getTime();
-    const d = Math.max(1, Math.ceil(diffMs / 86400000)); // ✔ AQUI se genera
+    let d = Math.ceil(diffMs / 86400000);
+    if (d <= 0) return { dias: 0, total: 0 };
 
-    const totalCalculado = calcular({
-      tipo: espacio.tipo as TipoEspacio,
-      dias: d,                                    // ✔ USAR d AQUÍ
-      personas,
-      capacidadBase: espacio.capacidad,
-      capacidadExtra: espacio.capacidadExtra ?? undefined,
-      tarifaBaseSocio: espacio.tarifaClp,
-      tarifaBaseTercero: espacio.tarifaExterno ?? undefined,
-      extraSocio: espacio.extraSocioPorPersona ?? undefined,
-      extraTercero: espacio.extraTerceroPorPersona ?? undefined,
-      usoReserva,
-    });
+    // 👉 aquí luego puedes sumar piscina/cabaña/quincho según reglas ENAP
+    return { dias: d, total: 0 };
+  }, [espacio, fechaInicio, fechaFin, personas, personasPiscina]);
 
-    return { dias: d, total: totalCalculado };
-  }, [espacio, fechaInicio, fechaFin, personas, usoReserva, calcular]);
+  // ============================================================
+  // Sync reservaContext
+  // ============================================================
 
-    // ============================================================
-    // Sincronizar con ReservaContext (side-effect en useEffect)
-    // ============================================================
- // ============================================================
-    // Sincronizar con ReservaContext (sin borrar el cálculo)
-    // ============================================================
-    useEffect(() => {
-      if (!espacio) return;
+  useEffect(() => {
+    if (!espacio) return;
 
-      // Si aún no ingresaron fechas → solo guardamos metadatos del espacio
-      if (!fechaInicio || !fechaFin) {
-        setReservaActual({
-          espacioId: espacio.id,
-          espacioNombre: espacio.nombre,
-          tarifa: espacio.tarifaClp,
-        });
-        return;
-      }
-
-      // Cuando ya existen fechas → guardamos el cálculo correcto SIEMPRE
+    if (!fechaInicio || !fechaFin) {
       setReservaActual({
         espacioId: espacio.id,
         espacioNombre: espacio.nombre,
-        tarifa: espacio.tarifaClp,
-        fechaInicio,
-        fechaFin,
-        personas: Number(personas) || 1,
-        dias,
-        total,
       });
-    }, [
-      espacio,
+      return;
+    }
+
+    setReservaActual({
+      espacioId: espacio.id,
+      espacioNombre: espacio.nombre,
       fechaInicio,
       fechaFin,
-      personas,
+      cantidadPersonas: personas,
       dias,
       total,
-      setReservaActual,
-    ]);
-
-
-    const maxCap =
-      (espacio?.capacidad ?? 1) + (espacio?.capacidadExtra ?? 0);
+    });
+  }, [espacio, fechaInicio, fechaFin, personas, dias, total, setReservaActual]);
 
   // ============================================================
-  // Validaciones de fechas enap
+  // Capacidad máxima
   // ============================================================
-  const validarFechasConBloques = (data: ReservaFrontendType): boolean => {
+
+  const maxCap = useMemo(() => {
+    if (!espacio) return 1;
+    if (espacio.tipo === "PISCINA") return 80;
+    return (espacio.capacidad ?? 1) + (espacio.capacidadExtra ?? 0);
+  }, [espacio]);
+
+  // ============================================================
+  // Validaciones
+  // ============================================================
+
+  const validarFechasConBloques = (data: ReservaFormValues): boolean => {
     if (!data.fechaInicio || !data.fechaFin) {
       agregarNotificacion("Debes seleccionar fecha de inicio y término.", "error");
       return false;
@@ -255,7 +252,6 @@ export function useReservaForm() {
       return false;
     }
 
-    // ❗ Fecha de inicio no puede ser pasada
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
@@ -264,13 +260,25 @@ export function useReservaForm() {
       return false;
     }
 
-    // ❗ Termino > inicio
     if (fin <= ini) {
       agregarNotificacion("La fecha de término debe ser posterior a la de inicio.", "error");
       return false;
     }
 
-    // ❗ Solape con reservas ocupadas
+    // Regla ENAP: Quincho / Cabaña = entre 3 y 6 días
+    const diffMs = fin.getTime() - ini.getTime();
+    const d = Math.ceil(diffMs / 86400000);
+    if (espacio && espacio.tipo !== "PISCINA") {
+      if (d < 3 || d > 6) {
+        agregarNotificacion(
+          "Las reservas de cabañas y quinchos deben ser mínimo 3 y máximo 6 días.",
+          "error"
+        );
+        return false;
+      }
+    }
+
+    // Solape con bloques ocupados
     const solapa = bloquesOcupados.some((b) => {
       const iniO = new Date(b.fechaInicio);
       const finO = new Date(b.fechaFin);
@@ -285,7 +293,7 @@ export function useReservaForm() {
     return true;
   };
 
-  const validarCapacidad = (data: ReservaFrontendType): boolean => {
+  const validarCapacidad = (data: ReservaFormValues): boolean => {
     const cant = data.cantidadPersonas ?? 1;
     if (cant > maxCap) {
       agregarNotificacion(
@@ -298,9 +306,10 @@ export function useReservaForm() {
   };
 
   // ============================================================
-  // Submit final
+  // Submit final (tipado como SubmitHandler<ReservaFormValues>)
   // ============================================================
-  const onSubmit = async (data: ReservaFrontendType) => {
+
+  const onSubmit: SubmitHandler<ReservaFormValues> = async (data) => {
     if (!espacio) {
       agregarNotificacion("Espacio no disponible.", "error");
       return;
@@ -309,73 +318,59 @@ export function useReservaForm() {
     if (!validarFechasConBloques(data)) return;
     if (!validarCapacidad(data)) return;
 
-        const payload = {
+    const payload = {
       ...data,
+      espacioId: espacio.id,
       dias,
       total,
     };
 
     const reservaId = await crearReservaEnServidor(payload as any);
-
-
     if (!reservaId) return;
 
     agregarNotificacion("Reserva creada correctamente", "success");
-    navigate(`/reserva/preview?reservaId=${reservaId}`);
+
+    navigate(`${PATHS.RESERVA_PREVIEW}?reservaId=${reservaId}`);
   };
 
-  useEffect(() => {
-      const saved = localStorage.getItem(FORM_KEY);
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          Object.entries(data).forEach(([key, value]) => {
-            setValue(key as any, value);
-          });
-        } catch (err) {
-          console.error("Error leyendo draft reserva:", err);
-        }
-      }
-    }, [setValue]);
+  // ============================================================
+  // Auto-save
+  // ============================================================
 
-    useEffect(() => {
+  useEffect(() => {
     const sub = watch((value) => {
       localStorage.setItem(FORM_KEY, JSON.stringify(value));
     });
     return () => sub.unsubscribe();
   }, [watch]);
 
-
-
   // ============================================================
-  // RETORNO FINAL AL COMPONENTE
+  // Return
   // ============================================================
+
   return {
     loading,
     error,
     espacio,
 
-    // RHF
     register,
     watch,
     setValue,
     errors,
     handleSubmit,
 
-    // reactivos
     fechaInicio,
     fechaFin,
     personas,
+    personasPiscina,
     usoReserva,
     socioPresente,
     responsable,
 
-    // helpers
     total,
     maxCap,
     today,
 
-    // handlers
     onChangeInicio: (v: string) =>
       setValue("fechaInicio", v, { shouldValidate: true }),
 
@@ -385,13 +380,6 @@ export function useReservaForm() {
     onChangePersonas: (v: number) =>
       setValue("cantidadPersonas", v, { shouldValidate: true }),
 
-    setResponsable: (r: { nombre: string; rut: string; email: string }) => {
-      setValue("nombreResponsable", r.nombre);
-      setValue("rutResponsable", r.rut);
-      setValue("emailResponsable", r.email);
-    },
-
-    // submit
     onSubmit,
   };
 }

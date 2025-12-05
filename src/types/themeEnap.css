@@ -1,0 +1,42 @@
+:root {
+  /* --- PRIMARIO: Cian moderno --- */
+  --cian-50:  #E3F7FF;
+  --cian-100: #C5ECFA;
+  --cian-200: #9EDFF7;
+  --cian-300: #6ACDF3;
+  --cian-400: #3DBBE9;
+  --cian-500: #00A5DB;
+  --cian-600: #0088CC; /* PRINCIPAL */
+  --cian-700: #006DA8;
+  --cian-800: #005985;
+  --cian-900: #003A57;
+
+  /* --- SECUNDARIO: Azul ENAP --- */
+  --azul-100: #E5EEF1;
+  --azul-200: #C3D6DD;
+  --azul-300: #9EBAC6;
+  --azul-400: #6D94A6;
+  --azul-500: #3A6F84;
+  --azul-600: #003B4D;
+  --azul-700: #002E3E; /* SECUNDARIO */
+  --azul-800: #001C26;
+  --azul-900: #00121A;
+
+  /* --- ACENTO INSTITUCIONAL ENAP --- */
+  --gold:     #DEC01F;
+  --gold-dark:#C5A619;
+
+  /* --- ESTADOS --- */
+  --success: #2ECC71;
+  --error:   #E74C3C;
+  --warning: #F1C40F;
+
+  /* --- GRADIENTES CORPORATIVOS --- */
+  --grad-header: linear-gradient(to right, #002E3E, #005D73, #0088CC);
+  --grad-btn:    linear-gradient(to right, #0088CC, #00A5DB);
+  --grad-card:   linear-gradient(145deg, #E3F7FF, #C5ECFA);
+
+  /* --- GENERALES --- */
+  --radius: 12px;
+  --shadow: 0 4px 14px rgba(0,0,0,0.08);
+}

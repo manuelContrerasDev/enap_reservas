@@ -1,3 +1,4 @@
+// src/components/reserva/ResponsableForm.tsx
 import React from "react";
 import {
   UseFormRegister,
@@ -39,7 +40,6 @@ const ResponsableForm: React.FC<Props> = ({
         <input
           type="text"
           placeholder="Nombre del responsable"
-          {...register("nombreResponsable")}
           value={nombre}
           onChange={(e) =>
             setValue("nombreResponsable", e.target.value, {

@@ -1,16 +1,31 @@
 import { useMemo } from "react";
-import type { Reserva } from "@/context/ReservaContext";
+import type { ReservaFrontend } from "@/types/ReservaFrontend";
 
-/** KPIs por estado */
-export function useReservasKPIs(reservas: Reserva[]) {
+export function useReservasKPIs(reservas: ReservaFrontend[] = []) {
   return useMemo(() => {
-    let confirmadas = 0, pendientes = 0, canceladas = 0, rechazadas = 0;
+    // Contadores seguros
+    let confirmadas = 0;
+    let pendientes = 0;
+    let canceladas = 0;
+    let rechazadas = 0;
 
-    for (const r of reservas) {
-      if (r.estado === "CONFIRMADA") confirmadas++;
-      else if (r.estado === "PENDIENTE") pendientes++;
-      else if (r.estado === "CANCELADA") canceladas++;
-      else if (r.estado === "RECHAZADA") rechazadas++;
+    for (let i = 0; i < reservas.length; i++) {
+      const estado = reservas[i].estado;
+
+      switch (estado) {
+        case "CONFIRMADA":
+          confirmadas++;
+          break;
+        case "PENDIENTE":
+          pendientes++;
+          break;
+        case "CANCELADA":
+          canceladas++;
+          break;
+        case "RECHAZADA":
+          rechazadas++;
+          break;
+      }
     }
 
     return {

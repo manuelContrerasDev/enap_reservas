@@ -1,30 +1,94 @@
+/* ============================================================
+   ENAP GLOBAL BASE — unificado y corregido
+   ============================================================ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* -------------------------
+   RESET BÁSICO
+-------------------------- */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* -------------------------
+   FUENTE GLOBAL
+-------------------------- */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Modo claro */
+  /* Tailwind theme (aplico aquí tu theme base) */
+  @apply bg-enap-bg text-enap-text font-sans;
+}
+
+/* -------------------------
+   Modo claro / dark mode
+-------------------------- */
 .light {
   background-color: #f9fafb;
   color: #1a1a1a;
 }
 
-/* Modo oscuro institucional */
 .dark {
   background-color: #00171f;
   color: #e2e8f0;
 }
+
+/* ============================================================
+   ESTILOS INSTITUCIONALES ENAP
+   ============================================================ */
+
+/* BOTONES */
+.btn-enap {
+  @apply bg-cian-600 text-white px-4 py-2 rounded-lg font-semibold shadow-soft
+         hover:bg-cian-700 transition-all;
 }
 
+.btn-enap-secondary {
+  @apply bg-azul-700 text-white px-4 py-2 rounded-lg font-semibold shadow-soft
+         hover:bg-azul-800 transition-all;
+}
+
+.btn-enap-gold {
+  @apply bg-gold text-azul-700 px-4 py-2 rounded-lg font-semibold shadow-soft
+         hover:bg-gold-dark transition-all;
+}
+
+/* INPUTS */
+.input-enap {
+  @apply w-full border border-gray-300 rounded-lg px-3 py-2 bg-white 
+         focus:ring-2 focus:ring-cian-500 focus:border-cian-500 outline-none;
+}
+
+/* CARDS */
+.card-enap {
+  @apply bg-white rounded-xl border border-gray-200 shadow-soft;
+}
+
+.card-enap-cian {
+  @apply bg-cian-card rounded-xl border border-cian-100 shadow-cian-glow;
+}
+
+/* HEADER */
+.header-enap {
+  @apply bg-enap-header text-white shadow-md;
+}
+
+/* LINKS */
+.link-enap {
+  @apply text-cian-600 hover:text-cian-700 underline font-medium;
+}
+
+/* BADGES */
+.badge-enap {
+  @apply inline-flex px-2 py-1 rounded-full text-xs font-semibold
+         bg-cian-100 text-cian-700;
+}

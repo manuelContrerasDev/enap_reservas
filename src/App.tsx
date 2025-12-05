@@ -1,218 +1,121 @@
 // src/App.tsx
-import React, { Suspense, lazy, useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";
-import { PATHS } from "./routes/paths";
+import React from "react";
+import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
-import ErrorBoundary from "./components/common/ErrorBoundary";
-import LoaderScreen from "./components/ui/LoaderScreen";
-import Loader from "./components/ui/Loader";
-import LayoutBase from "./components/layout/LayoutBase";
+import LoginPage from "@/pages/auth/LoginPage";
+import RegisterPage from "@/pages/auth/RegisterPage";
+
+import LayoutBase from "@/components/layout/LayoutBase";
+
+import AppShell from "@/pages/AppShell";
+import EspaciosPage from "@/pages/socio/EspaciosPage";
+import MisReservasPage from "@/pages/socio/MisReservasPage";
+
+import ReservaPage from "@/pages/socio/ReservaPage";
+import ReservaPreviewPage from "@/pages/socio/ReservaPreviewPage";
+
+import AdminEspaciosPage from "@/pages/admin/AdminEspaciosPage";
+import TesoreriaPage from "@/pages/admin/TesoreriaPage";
+import AdminReservasPage from "@/pages/admin/AdminReservasPage";
+
+import { PATHS } from "@/routes/paths";
+import { ReservaProvider } from "@/context/ReservaContext";
+import SuccessRegisterPage from "./pages/auth/redirects/SuccesRegisterPage";
+import LinkExpiredPage from "./pages/auth/redirects/LinkExpiredPage";
+import EmailSentPage from "./pages/auth/redirects/EmailSentPage";
+import AlreadyConfirmedPage from "./pages/auth/redirects/AlreadyConfirmedPage";
+import ResendConfirmationPage from "./pages/auth/redirects/ResendConfirmPage";
+import ResetRequestPage from "./pages/auth/ResetRequestPage";
+import ResetConfirmPage from "./pages/auth/redirects/ResetConfirmPage";
 import ConfirmEmailPage from "./pages/auth/ConfirmEmailPage";
-import EspacioDetallePage from "@/pages/socio/EspacioDetallePage";
-
-// Auth
-const LoginPro = lazy(() => import("./pages/auth/LoginPage"));
-const RegisterPro = lazy(() => import("./pages/auth/RegisterPage"));
-const ResetRequestPage = lazy(() => import("./pages/auth/ResetRequestPage"));
-const ResetConfirmPage = lazy(() => import("./pages/auth/ResetConfirmPage"));
-
-// Socio / externo
-const EspaciosPage = lazy(() => import("./pages/socio/EspaciosPage"));
-const ReservaForm = lazy(() => import("./pages/socio/ReservaFormPage"));
-const PagoPage = lazy(() => import("./pages/pago/PagoPage"));
-const WebpayRetornoPage = lazy(() => import("./pages/pago/RetornoWebpayPage"));
-const PagoResultadoPage = lazy(() => import("./pages/pago/PagoResultadoPage"));
-const ReservaPreviewPage = lazy(() =>
-  import("./pages/socio/ReservaPreviewPage")
-);
+import LoaderScreen from "./components/ui/LoaderScreen";
 
 
-// Admin
-const AdminPage = lazy(() => import("./pages/admin/AdminReservasPage"));
-const AdminEspaciosPage = lazy(() => import("./pages/admin/AdminEspaciosPage"));
-const TesoreriaPage = lazy(() => import("./pages/admin/TesoreriaPage"));
-
-const NotFoundPage = lazy(() => import("./pages/errors/NotFoundPage"));
-
-/* =========================================================================
- * 🌐 App principal
- * ========================================================================= */
-const SPLASH_MS = 1200;
-
-// ===========================================================
-// ✅ ProtectedRoute — Versión segura
-// ===========================================================
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { role, isLoading } = useAuth();
+// ============================================================
+// 🔐 PROTECTED ROUTE
+// ============================================================
+const ProtectedRoute: React.FC = () => {
+  const { user, isLoading } = useAuth();
 
   if (isLoading) return <LoaderScreen />;
+  if (!user) return <Navigate to={PATHS.AUTH_LOGIN} replace />;
 
-  const isAuthenticated = !!role;
-
-  return isAuthenticated ? <>{children}</> : <Navigate to={PATHS.AUTH_LOGIN} replace />;
+  return <Outlet />;
 };
 
-// ===========================================================
-// ✅ RequiredRoleRoute — Versión segura
-// ===========================================================
-const RequiredRoleRoute: React.FC<{
-  role: ("ADMIN" | "SOCIO" | "EXTERNO")[];
-  children: React.ReactNode;
-}> = ({ role, children }) => {
-  const { role: userRole, isLoading } = useAuth();
-
-  if (isLoading) return <LoaderScreen />;
-
-  const isAuthenticated = !!userRole;
-  const hasPermission = isAuthenticated && role.includes(userRole);
-
-  if (!isAuthenticated) {
-    return <Navigate to={PATHS.AUTH_LOGIN} replace />;
-  }
-
-  if (!hasPermission) {
-    return (
-      <Navigate to={userRole === "ADMIN" ? PATHS.ADMIN : PATHS.ESPACIOS} replace />
-    );
-  }
-
-  return <>{children}</>;
-};
-
-// ===========================================================
-// APP
-// ===========================================================
-const App: React.FC = () => {
+// ============================================================
+// 👤 HOME POR ROL — SIN LOOPS
+// ============================================================
+const RoleRedirect: React.FC = () => {
   const { role } = useAuth();
-  const [showSplash, setShowSplash] = useState(true);
 
-  useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), SPLASH_MS);
-    return () => clearTimeout(t);
-  }, []);
+  if (role === "ADMIN") return <Navigate to={PATHS.ADMIN_HOME} replace />;
+  if (role === "SOCIO") return <Navigate to={PATHS.SOCIO_HOME} replace />;
+  if (role === "EXTERNO") return <Navigate to={PATHS.EXTERNO_HOME} replace />;
 
-  if (showSplash) return <LoaderScreen />;
+  return <Navigate to={PATHS.AUTH_LOGIN} replace />;
+};
 
+// ============================================================
+// 🚀 APP ROUTER
+// ============================================================
+export default function App() {
   return (
-    <ErrorBoundary>
-      <Suspense fallback={<Loader />}>
-        <Routes>
-          {/* PÚBLICO */}
-          <Route path={PATHS.AUTH_LOGIN} element={<LoginPro />} />
-          <Route path={PATHS.AUTH_REGISTER} element={<RegisterPro />} />
-          <Route path={PATHS.AUTH_RESET_REQUEST} element={<ResetRequestPage />} />
-          <Route path={PATHS.AUTH_RESET_CONFIRM} element={<ResetConfirmPage />} />
-          <Route path="/espacios/:id" element={<EspacioDetallePage />} />
+    <Routes>
+      {/* LOGIN */}
+    /* AUTH */
+    <Route path={PATHS.AUTH_LOGIN} element={<LoginPage />} />
+    <Route path={PATHS.AUTH_REGISTER} element={<RegisterPage />} />
 
-          {/* CONFIRMACIÓN */}
-          <Route path="/auth/confirm" element={<ConfirmEmailPage />} />
+    <Route path={PATHS.AUTH_CONFIRM} element={<ConfirmEmailPage />} />
+    <Route path={PATHS.AUTH_EMAIL_SENT} element={<EmailSentPage />} />
+    <Route path={PATHS.AUTH_LINK_EXPIRED} element={<LinkExpiredPage />} />
+    <Route path={PATHS.AUTH_ALREADY_CONFIRMED} element={<AlreadyConfirmedPage />} />
+    <Route path={PATHS.AUTH_RESEND_CONFIRMATION} element={<ResendConfirmationPage />} />
+    <Route path={PATHS.AUTH_RESET_REQUEST} element={<ResetRequestPage />} />
+    <Route path={PATHS.AUTH_RESET_CONFIRM} element={<ResetConfirmPage />} />
 
-          {/* WEBPAY */}
-          <Route path="/pago/webpay/retorno" element={<WebpayRetornoPage />} />
-          <Route path={PATHS.PAGO_WEBPAY_FINAL} element={<PagoResultadoPage />} />
+      {/* ZONA PROTEGIDA */}
+      <Route path="/app" element={<ProtectedRoute />}>
+        <Route element={<LayoutBase />}>
 
-          {/* PROTEGIDO */}
+          {/* HOME dinámico */}
+          <Route index element={<RoleRedirect />} />
+
+          {/* HOME genérico */}
+          <Route path="home" element={<AppShell />} />
+
+          {/* SOCIO / EXTERNO */}
+          <Route path="espacios" element={<EspaciosPage />} />
+          <Route path="mis-reservas" element={<MisReservasPage />} />
+
+          {/* RESERVAS — ✔ ENVUELTO en ReservaProvider */}
           <Route
-            path="/"
             element={
-              <ProtectedRoute>
-                <LayoutBase />
-              </ProtectedRoute>
+              <ReservaProvider>
+                <Outlet />
+              </ReservaProvider>
             }
           >
-            <Route
-              index
-              element={
-                role === "ADMIN"
-                  ? <Navigate to={PATHS.ADMIN} replace />
-                  : <Navigate to={PATHS.ESPACIOS} replace />
-              }
-            />
-
-            {/* SOCIO / EXTERNO */}
-            <Route
-              path="espacios"
-              element={
-                <RequiredRoleRoute role={["SOCIO", "EXTERNO"]}>
-                  <EspaciosPage />
-                </RequiredRoleRoute>
-              }
-            />
-
-            <Route
-              path="reserva"
-              element={
-                <RequiredRoleRoute role={["SOCIO", "EXTERNO"]}>
-                  <ReservaForm />
-                </RequiredRoleRoute>
-              }
-            />
-
-            <Route
-              path="reservar/:id"
-              element={
-                <RequiredRoleRoute role={["SOCIO", "EXTERNO"]}>
-                  <ReservaForm />
-                </RequiredRoleRoute>
-              }
-            />
-
-            <Route
-              path="reserva/preview"
-              element={
-                <RequiredRoleRoute role={["SOCIO", "EXTERNO"]}>
-                  <ReservaPreviewPage />
-                </RequiredRoleRoute>
-              }
-            />
-
-            <Route
-              path="pago"
-              element={
-                <RequiredRoleRoute role={["SOCIO", "EXTERNO"]}>
-                  <PagoPage />
-                </RequiredRoleRoute>
-              }
-            />
-
-            {/* ADMIN */}
-            <Route
-              path="admin"
-              element={
-                <RequiredRoleRoute role={["ADMIN"]}>
-                  <AdminPage />
-                </RequiredRoleRoute>
-              }
-            />
-
-            <Route
-              path="admin/espacios"
-              element={
-                <RequiredRoleRoute role={["ADMIN"]}>
-                  <AdminEspaciosPage />
-                </RequiredRoleRoute>
-              }
-            />
-
-            <Route
-              path="tesoreria"
-              element={
-                <RequiredRoleRoute role={["ADMIN"]}>
-                  <TesoreriaPage />
-                </RequiredRoleRoute>
-              }
-            />
-
-            <Route path="*" element={<NotFoundPage />} />
+            <Route path="reservar/:id" element={<ReservaPage />} />
+            <Route path="reserva/preview" element={<ReservaPreviewPage />} />
           </Route>
 
-          {/* FUERA DE RUTAS */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Suspense>
-    </ErrorBoundary>
-  );
-};
+          {/* ADMIN */}
+          <Route path="admin/reservas" element={<AdminReservasPage />} />
+          <Route path="admin/espacios" element={<AdminEspaciosPage />} />
+          <Route path="admin/tesoreria" element={<TesoreriaPage />} />
 
-export default App;
+          {/* TEST */}
+          <Route path="test" element={<div>TEST OK ✔</div>} />
+
+        </Route>
+      </Route>
+
+      {/* DEFAULTS */}
+      <Route path="/" element={<Navigate to={PATHS.AUTH_LOGIN} replace />} />
+      <Route path="*" element={<Navigate to={PATHS.AUTH_LOGIN} replace />} />
+    </Routes>
+  );
+}

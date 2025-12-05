@@ -1,12 +1,21 @@
+// src/auth/components/RegisterForm.tsx
+
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { registerSchema, RegisterSchemaType } from "@/validators/auth.schema";
-import { useAuthForm } from "@/hooks/useAuthForm";
 import { z } from "zod";
-import { useNotificacion } from "@/context/NotificacionContext";
-import { useNavigate } from "react-router-dom";
 
-// Schema extendido con password2
+import { api } from "@/lib/axios";
+import { registerSchema, RegisterSchemaType } from "@/validators/auth.schema";
+
+import AuthInput from "@/auth/components/AuthInput";
+import AuthButton from "@/auth/components/AuthButton";
+
+interface RegisterResponse {
+  ok: boolean;
+  message?: string;
+}
+
 const registerFormSchema = registerSchema
   .extend({
     password2: z.string().min(6, "Repite la contraseña"),
@@ -16,108 +25,111 @@ const registerFormSchema = registerSchema
     path: ["password2"],
   });
 
-export const RegisterForm = () => {
-  const navigate = useNavigate();
-  const { agregarNotificacion } = useNotificacion();
+type RegisterFormValues = RegisterSchemaType & { password2: string };
+
+interface RegisterFormProps {
+  loading?: boolean;
+  onStartLoading?: () => void;
+  onFinishLoading?: () => void;
+  onError?: (msg: string) => void;
+  onSuccess?: () => void;
+}
+
+export const RegisterForm: React.FC<RegisterFormProps> = ({
+  loading,              // 👈 añadido aquí
+  onStartLoading,
+  onFinishLoading,
+  onError,
+  onSuccess,
+}) => {
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<RegisterSchemaType & { password2: string }>({
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
   });
 
-  const { loading, serverError, handleSubmit: send } = useAuthForm(
-    registerSchema,
-    "/api/auth/register"
-  );
+  const onSubmit = async (data: RegisterFormValues) => {
+    setServerError(null);
+    onStartLoading?.();
 
-  const onSubmit = async (data: RegisterSchemaType & { password2: string }) => {
-    const result = await send({
-      name: data.name,
-      email: data.email,
-      password: data.password,
-    });
+    try {
+      const res = await api.post<RegisterResponse>("/auth/register", {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+      });
 
-    if (result.ok) {
-      agregarNotificacion(
-        "Cuenta creada correctamente 🎉 Revisa tu correo para confirmarla.",
-        "success"
-      );
-      navigate("/auth/login", { replace: true });
+      if (!res.data.ok) {
+        const msg =
+          res.data.message || "No se pudo crear la cuenta. Intenta nuevamente.";
+        setServerError(msg);
+        onError?.(msg);
+        return;
+      }
+
+      onSuccess?.();
+    } catch (err: any) {
+      console.error("❌ Error registrando usuario:", err);
+
+      const msg =
+        err?.response?.data?.message ||
+        "Error inesperado al registrar. Inténtalo nuevamente.";
+
+      setServerError(msg);
+      onError?.(msg);
+    } finally {
+      onFinishLoading?.();
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {serverError && <p className="text-red-600 text-sm">{serverError}</p>}
+      {serverError && (
+        <p className="text-red-600 text-sm text-center font-medium">
+          {serverError}
+        </p>
+      )}
 
-      {/* Nombre */}
-      <div className="flex flex-col space-y-1">
-        <label className="text-sm font-medium text-gray-700">Nombre</label>
-        <input
-          {...register("name")}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#00796B] focus:border-[#00796B] outline-none"
-          placeholder="Tu nombre completo"
-        />
-        {errors.name && (
-          <p className="text-red-600 text-sm">{errors.name.message}</p>
-        )}
-      </div>
+      <AuthInput
+        label="Nombre"
+        error={errors.name?.message}
+        placeholder="Ingresa tu nombre"
+        {...register("name")}
+      />
 
-      {/* Correo */}
-      <div className="flex flex-col space-y-1">
-        <label className="text-sm font-medium text-gray-700">
-          Correo electrónico
-        </label>
-        <input
-          {...register("email")}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#00796B] focus:border-[#00796B] outline-none"
-          placeholder="correo@ejemplo.com"
-        />
-        {errors.email && (
-          <p className="text-red-600 text-sm">{errors.email.message}</p>
-        )}
-      </div>
+      <AuthInput
+        label="Correo electrónico"
+        error={errors.email?.message}
+        placeholder="usuario@sindicatoenap.cl"
+        {...register("email")}
+      />
 
-      {/* Contraseña */}
-      <div className="flex flex-col space-y-1">
-        <label className="text-sm font-medium text-gray-700">Contraseña</label>
-        <input
-          type="password"
-          {...register("password")}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#00796B] focus:border-[#00796B] outline-none"
-          placeholder="••••••••"
-        />
-        {errors.password && (
-          <p className="text-red-600 text-sm">{errors.password.message}</p>
-        )}
-      </div>
+      <AuthInput
+        type="password"
+        label="Contraseña"
+        error={errors.password?.message}
+        placeholder="••••••••"
+        {...register("password")}
+      />
 
-      {/* Repetir contraseña */}
-      <div className="flex flex-col space-y-1">
-        <label className="text-sm font-medium text-gray-700">
-          Repetir contraseña
-        </label>
-        <input
-          type="password"
-          {...register("password2")}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white focus:ring-2 focus:ring-[#00796B] focus:border-[#00796B] outline-none"
-          placeholder="••••••••"
-        />
-        {errors.password2 && (
-          <p className="text-red-600 text-sm">{errors.password2.message}</p>
-        )}
-      </div>
+      <AuthInput
+        type="password"
+        label="Repetir contraseña"
+        error={errors.password2?.message}
+        placeholder="••••••••"
+        {...register("password2")}
+      />
 
-      {/* Botón */}
-      <button
-        disabled={loading}
-        className="w-full bg-[#00796B] text-white font-semibold py-3 rounded-lg shadow-md hover:bg-[#00695C] transition-all disabled:bg-gray-400"
+      <AuthButton
+        type="submit"
+        disabled={isSubmitting || loading}
       >
-        {loading ? "Creando cuenta..." : "Registrarme"}
-      </button>
+        {isSubmitting || loading ? "Creando cuenta..." : "Crear cuenta"}
+      </AuthButton>
     </form>
   );
 };

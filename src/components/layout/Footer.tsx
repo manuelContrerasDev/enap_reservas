@@ -1,165 +1,119 @@
-import React from "react";
-import {
-  Facebook,
-  Instagram,
-  Linkedin,
-  Mail,
-  MapPin,
-  Phone,
-  Clock,
-  Globe,
-} from "lucide-react";
-import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
-import logoEnap from "../../assets/logo-enap.png";
+import React, { ReactNode, useState, Suspense, useEffect, useRef } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
-/**
- * Footer institucional ENAP — Inspirado en Rápida&Sabrosa pero adaptado a entorno corporativo.
- * Colores: Azul petróleo (#002E3E) + Dorado (#DEC01F)
- * Diseño: Limpio, formal, informativo y responsivo.
- */
-const Footer: React.FC = () => {
-  const enlaces = [
-    { id: "inicio", title: "Inicio", to: "/" },
-    { id: "espacios", title: "Espacios", to: "/espacios" },
-    { id: "reservas", title: "Reservas", to: "/reserva" },
-    { id: "socios", title: "Socios", to: "/socios" },
-    { id: "contacto", title: "Contacto", to: "#" },
-  ];
+import LoaderTransition from "../ui/LoaderTransition";
+import Footer from "../layout/Footer";
+import Sidebar from "@/components/layout/Sidebar";
+import { useAuth } from "../../context/AuthContext";
 
-  const redes = [
-    { id: "linkedin", icon: Linkedin, href: "https://www.linkedin.com/company/enap/" },
-    { id: "facebook", icon: Facebook, href: "https://www.facebook.com/ENAPChile" },
-    { id: "instagram", icon: Instagram, href: "https://www.instagram.com/enap_chile/" },
-    { id: "web", icon: Globe, href: "https://www.enap.cl/" },
-  ];
+const LOADER_MIN_MS = 300;
+const LOADER_MAX_MS = 1200;
+const SAME_ROUTE_GUARD_MS = 120;
 
-  const horarios = [
-    { id: 1, label: "Lunes a Viernes", horas: "08:30 - 17:30" },
-    { id: 2, label: "Sábado y Domingo", horas: "Cerrado" },
-  ];
+const LayoutBase: React.FC<{ children?: ReactNode }> = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(false);
 
+  const location = useLocation();
+  const lastPathRef = useRef(location.pathname);
+
+  /* ───────────────────────────────
+   * 🔄 ROUTE LOADING CONTROL
+   * ─────────────────────────────── */
+  const handleRouteChange = () => setIsLoading(true);
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const guard = setTimeout(() => {
+      if (location.pathname === lastPathRef.current) {
+        setIsLoading(false);
+      }
+    }, SAME_ROUTE_GUARD_MS);
+
+    const hardStop = setTimeout(() => setIsLoading(false), LOADER_MAX_MS);
+
+    return () => {
+      clearTimeout(guard);
+      clearTimeout(hardStop);
+    };
+  }, [isLoading, location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname !== lastPathRef.current) {
+      lastPathRef.current = location.pathname;
+      const t = setTimeout(() => setIsLoading(false), LOADER_MIN_MS);
+      return () => clearTimeout(t);
+    }
+  }, [location.pathname]);
+
+
+  /* ───────────────────────────────
+   * 🔵 LAYOUT PRINCIPAL CON SIDEBAR
+   * ─────────────────────────────── */
   return (
-    <footer
-      role="contentinfo"
-      aria-label="Pie de página institucional"
-      className="bg-[#002E3E] text-white border-t border-[#DEC01F]/40"
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        {/* 🏢 Sobre ENAP */}
-        <section aria-labelledby="footer-enap">
-          <h3
-            id="footer-enap"
-            className="text-xl font-bold text-[#DEC01F] mb-4 flex items-center gap-2"
+    <div className="flex min-h-screen bg-[#F9FAFB] text-[#1A1A1A]">
+
+      {/* SIDEBAR — Desktop fijo */}
+      <Sidebar />
+
+      {/* CONTENEDOR GENERAL A LA DERECHA */}
+      <div className="
+        flex flex-col flex-1 
+        md:ml-64     /* Desplazar contenido cuando sidebar está visible */
+        ml-0         /* Mobile: sin margen */
+        transition-all min-h-screen
+      ">
+
+        {/* LOADER GLOBAL */}
+        <AnimatePresence mode="sync">
+          {isLoading && (
+            <motion.div
+              key="loader"
+              className="fixed inset-0 flex items-center justify-center z-[9999] bg-[#002E3E]/80 backdrop-blur-sm pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <LoaderTransition />
+            </motion.div>
+          )}
+
+          {/* MAIN CONTENT */}
+          <motion.main
+            key={location.pathname}
+            variants={{
+              initial: { opacity: 0, y: 10 },
+              animate: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+              exit: { opacity: 0, y: -10, transition: { duration: 0.25 } },
+            }}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex-1 max-w-7xl mx-auto w-full px-6 py-10"
+            onClick={handleRouteChange}
           >
-            <img
-              src={logoEnap}
-              alt="Logo ENAP Refinería Aconcagua"
-              className="w-10 h-auto bg-white rounded-md p-1.5 shadow-sm"
-              loading="lazy"
-            />
-            ENAP Refinería Aconcagua
-          </h3>
-          <p className="text-sm text-gray-300 leading-relaxed mb-4">
-            Sistema de Arriendos y Reservas — Limache.
-            Plataforma interna para la gestión de espacios, reservas y socios.
-          </p>
-          <div className="flex space-x-4 mt-2">
-            {redes.map(({ id, icon: Icon, href }) => (
-              <a
-                key={id}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-gray-300 hover:text-[#DEC01F] transition-colors"
-                aria-label={`Ir a ${id}`}
-              >
-                <Icon size={20} />
-              </a>
-            ))}
-          </div>
-        </section>
+            <Suspense fallback={<LoaderTransition />}>
+              {children ?? <Outlet />}
+            </Suspense>
+          </motion.main>
+        </AnimatePresence>
 
-        {/* ☎️ Contacto */}
-        <address className="not-italic text-sm text-gray-300 space-y-3">
-          <h3 className="text-xl font-bold text-[#DEC01F] mb-3">Contacto</h3>
-          <p className="flex items-start gap-2">
-            <Phone size={18} className="text-[#DEC01F] mt-0.5" />
-            <span>+56 9 8765 4321</span>
-          </p>
-          <p className="flex items-start gap-2">
-            <Mail size={18} className="text-[#DEC01F] mt-0.5" />
-            <span>contacto@enap.cl</span>
-          </p>
-          <p className="flex items-start gap-2">
-            <MapPin size={18} className="text-[#DEC01F] mt-0.5" />
-            <span>Av. Urmeneta s/n, Limache, Región de Valparaíso</span>
-          </p>
-        </address>
-
-        {/* ⏰ Horario */}
-        <section aria-labelledby="footer-horario" className="text-sm text-gray-300">
-          <h3
-            id="footer-horario"
-            className="text-xl font-bold text-[#DEC01F] mb-3 flex items-center gap-2"
-          >
-            <Clock size={18} className="text-[#DEC01F]" />
-            Horario de Atención
-          </h3>
-          <ul className="space-y-2">
-            {horarios.map(({ id, label, horas }) => (
-              <li key={id} className="flex items-start gap-2">
-                <Clock size={16} className="text-[#DEC01F] mt-1" />
-                <div>
-                  <p className="font-medium">{label}</p>
-                  <p>{horas}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* 🔗 Enlaces rápidos */}
-        <nav aria-labelledby="footer-links" className="text-sm text-gray-300">
-          <h3 id="footer-links" className="text-xl font-bold text-[#DEC01F] mb-3">
-            Enlaces Rápidos
-          </h3>
-          <ul className="space-y-2">
-            {enlaces.map(({ id, title, to }) => (
-              <li key={id}>
-                <Link
-                  to={to}
-                  className="hover:text-[#DEC01F] transition-colors duration-200"
-                >
-                  {title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </motion.div>
-
-      {/* 🔸 Línea inferior */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="bg-[#001F29] py-4 text-center text-xs text-gray-400 border-t border-white/10"
-      >
-        © {new Date().getFullYear()}{" "}
-        <span className="text-[#DEC01F] font-semibold">
-          ENAP Refinería Aconcagua
-        </span>
-        . Sistema de Reservas — Desarrollado por{" "}
-        <strong className="text-white/90">ManuDev</strong>.
-      </motion.div>
-    </footer>
+        {/* FOOTER FIJO Y RESPONSIVO */}
+        <motion.footer
+          variants={{
+            initial: { opacity: 0, y: 6 },
+            animate: { opacity: 1, y: 0, transition: { duration: 0.4 } },
+          }}
+          initial="initial"
+          animate="animate"
+          className="mt-auto w-full"
+        >
+          <Footer />
+        </motion.footer>
+      </div>
+    </div>
   );
 };
 
-export default Footer;
+export default LayoutBase;

@@ -3,9 +3,8 @@ import {
   createContext,
   useContext,
   useState,
-  useCallback,
-  useMemo,
   useEffect,
+  useMemo,
   ReactNode,
 } from "react";
 
@@ -17,9 +16,6 @@ import {
   EditarEspacioType,
 } from "@/validators/espacio.schema";
 
-/* ===============================================
- * INTERFACE PRINCIPAL — Espacio
- * =============================================== */
 export interface Espacio {
   id: string;
   nombre: string;
@@ -65,28 +61,22 @@ const EspaciosContext = createContext<EspaciosContextType | undefined>(
 );
 
 /* ===============================================
- * MAPPER DTO
+ * MAPPER SEGURO
  * =============================================== */
 const toEspacioDTO = (e: any): Espacio => ({
   id: e.id,
   nombre: e.nombre,
   tipo: e.tipo,
-
   capacidad: e.capacidad,
   capacidadExtra: e.capacidadExtra,
-
   tarifaClp: e.tarifaClp,
   tarifaExterno: e.tarifaExterno,
-
   extraSocioPorPersona: e.extraSocioPorPersona,
   extraTerceroPorPersona: e.extraTerceroPorPersona,
-
   descripcion: e.descripcion,
   imagenUrl: e.imagenUrl,
-
   modalidadCobro: e.modalidadCobro,
   activo: e.activo,
-
   createdAt: e.createdAt,
   updatedAt: e.updatedAt,
 });
@@ -95,163 +85,137 @@ const toEspacioDTO = (e: any): Espacio => ({
  * PROVIDER
  * =============================================== */
 export const EspaciosProvider = ({ children }: { children: ReactNode }) => {
-  const { role } = useAuth();
+  const { user } = useAuth();
+  const userRole = user?.role ?? "SOCIO";
 
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   const [loading, setLoading] = useState(false);
 
   /* ============================================================
-   * GET — Cargar catálogo dinámico según rol
+   * GET — Cargar catálogo
    * ============================================================ */
-  const cargarEspacios = useCallback(
-    async (filters: Record<string, any> = {}) => {
-      try {
-        setLoading(true);
+  const cargarEspacios = async (filters: Record<string, any> = {}) => {
+    try {
+      setLoading(true);
 
-        const endpoint = role === "ADMIN" ? "/espacios/admin" : "/espacios";
+      const endpoint =
+        userRole === "ADMIN" ? "/espacios/admin" : "/espacios";
 
-        const res = await api.get<{ ok: boolean; data: any[] }>(endpoint, {
-          params: filters,
-        });
+      const res = await api.get<{ ok: boolean; data: any[] }>(endpoint, {
+        params: filters,
+      });
 
-        const data = res.data?.data ?? [];
+      const raw = Array.isArray(res.data?.data) ? res.data.data : [];
 
-        setEspacios(
-          role === "ADMIN"
-            ? data.map(toEspacioDTO)
-            : data.filter((e) => e.activo).map(toEspacioDTO)
-        );
-      } catch (err) {
-        console.error("❌ Error al cargar espacios:", err);
-        setEspacios([]);
-      } finally {
-        setLoading(false);
+      let list: Espacio[] = [];
+
+      if (userRole === "ADMIN") {
+        list = raw.map(toEspacioDTO);
+      } else {
+        list = raw.filter((x) => x.activo).map(toEspacioDTO);
       }
-    },
-    [role]
-  );
 
+      setEspacios(list);
+    } catch (err) {
+      console.error("❌ Error al cargar espacios:", err);
+      setEspacios([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carga inicial + cada cambio de rol
   useEffect(() => {
     cargarEspacios();
-  }, [cargarEspacios]);
+  }, [userRole]);
 
   /* ============================================================
-   * POST — Crear espacio
+   * CRUD
    * ============================================================ */
-  const crearEspacio = useCallback(
-    async (data: CrearEspacioType) => {
-      try {
-        const res = await api.post<{ ok: boolean; data: any }>(
-          "/espacios",
-          data
-        );
 
-        if (!res.data?.ok) return null;
+  const crearEspacio = async (data: CrearEspacioType) => {
+    try {
+      const res = await api.post<{ ok: boolean; data: any }>(
+        "/espacios",
+        data
+      );
+      if (!res.data?.ok) return null;
+      await cargarEspacios();
+      return toEspacioDTO(res.data.data);
+    } catch {
+      return null;
+    }
+  };
 
-        await cargarEspacios();
-        return toEspacioDTO(res.data.data);
-      } catch (err) {
-        console.error("❌ Error al crear espacio:", err);
-        return null;
-      }
-    },
-    [cargarEspacios]
-  );
+  const editarEspacio = async (id: string, data: EditarEspacioType) => {
+    try {
+      const res = await api.put<{ ok: boolean; data: any }>(
+        `/espacios/${id}`,
+        data
+      );
+      if (!res.data?.ok) return null;
+      await cargarEspacios();
+      return toEspacioDTO(res.data.data);
+    } catch {
+      return null;
+    }
+  };
+
+  const eliminarEspacio = async (id: string) => {
+    try {
+      const res = await api.delete<{ ok: boolean }>(`/espacios/${id}`);
+      await cargarEspacios();
+      return !!res.data?.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const toggleActivo = async (id: string) => {
+    try {
+      const res = await api.patch<{ ok: boolean; data: any }>(
+        `/espacios/${id}/toggle`
+      );
+      if (!res.data?.ok) return null;
+      await cargarEspacios();
+      return toEspacioDTO(res.data.data);
+    } catch {
+      return null;
+    }
+  };
 
   /* ============================================================
-   * PUT — Editar espacio
+   * GET — Espacio individual
    * ============================================================ */
-  const editarEspacio = useCallback(
-    async (id: string, data: EditarEspacioType) => {
-      try {
-        const res = await api.put<{ ok: boolean; data: any }>(
-          `/espacios/${id}`,
-          data
-        );
-
-        if (!res.data?.ok) return null;
-
-        await cargarEspacios();
-        return toEspacioDTO(res.data.data);
-      } catch (err) {
-        console.error("❌ Error al editar espacio:", err);
-        return null;
-      }
-    },
-    [cargarEspacios]
-  );
-
-  /* ============================================================
-   * DELETE — Soft delete
-   * ============================================================ */
-  const eliminarEspacio = useCallback(
-    async (id: string): Promise<boolean> => {
-      try {
-        const res = await api.delete<{ ok: boolean }>(`/espacios/${id}`);
-        await cargarEspacios();
-        return !!res.data?.ok;
-      } catch (err) {
-        console.error("❌ Error al eliminar espacio:", err);
-        return false;
-      }
-    },
-    [cargarEspacios]
-  );
-
-  /* ============================================================
-   * TOGGLE — Activar / Inactivar
-   * ============================================================ */
-  const toggleActivo = useCallback(
-    async (id: string): Promise<Espacio | null> => {
-      try {
-        const res = await api.patch<{ ok: boolean; data: any }>(
-          `/espacios/${id}/toggle`
-        );
-
-        if (!res.data?.ok || !res.data.data) return null;
-
-        await cargarEspacios();
-        return toEspacioDTO(res.data.data);
-      } catch (err) {
-        console.error("❌ Error al cambiar estado:", err);
-        return null;
-      }
-    },
-    [cargarEspacios]
-  );
-
-  /* ============================================================
-   * DETALLE
-   * ============================================================ */
-  const obtenerEspacio = useCallback(async (id: string) => {
+  const obtenerEspacio = async (id: string) => {
     try {
       const res = await api.get<{ ok: boolean; data: any }>(
         `/espacios/${id}`
       );
+
+      if (!res.data?.data) return null;
+
       return toEspacioDTO(res.data.data);
-    } catch (err) {
-      console.error("❌ Error al obtener espacio:", err);
+    } catch {
       return null;
     }
-  }, []);
+  };
 
   /* ============================================================
-   * DISPONIBILIDAD
+   * GET — Disponibilidad
    * ============================================================ */
-  const obtenerDisponibilidad = useCallback(async (id: string) => {
+  const obtenerDisponibilidad = async (id: string) => {
     try {
       const res = await api.get<{
         ok: boolean;
-        id: string;
         fechas: { fechaInicio: string; fechaFin: string }[];
       }>(`/espacios/${id}/disponibilidad`);
 
       return res.data.fechas ?? [];
-    } catch (err) {
-      console.error("❌ Error al obtener disponibilidad:", err);
+    } catch {
       return [];
     }
-  }, []);
+  };
 
   const value = useMemo(
     () => ({
@@ -265,17 +229,7 @@ export const EspaciosProvider = ({ children }: { children: ReactNode }) => {
       obtenerEspacio,
       obtenerDisponibilidad,
     }),
-    [
-      espacios,
-      loading,
-      cargarEspacios,
-      crearEspacio,
-      editarEspacio,
-      eliminarEspacio,
-      toggleActivo,
-      obtenerEspacio,
-      obtenerDisponibilidad,
-    ]
+    [espacios, loading]
   );
 
   return (

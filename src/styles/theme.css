@@ -1,0 +1,27 @@
+:root {
+  /* PALETA ENAP */
+  --enap-primary: #002E3E;
+  --enap-primary-dark: #001e2a;
+  --enap-secondary: #004659;
+
+  --enap-gold: #C7A96A;
+  --enap-gold-dark: #b09058;
+
+  --enap-bg: #F2F4F5;
+  --enap-white: #ffffff;
+
+  /* TEXTO */
+  --enap-text: #1A1A1A;
+  --enap-text-light: #6B6B6B;
+
+  /* BORDES / RADIOS */
+  --enap-radius: 12px;
+
+  /* SOMBRAS */
+  --enap-shadow-sm: 0 2px 4px rgba(0,0,0,0.06);
+  --enap-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --enap-shadow-lg: 0 8px 18px rgba(0,0,0,0.12);
+
+  /* TRANSITIONS */
+  --enap-transition: 0.25s ease;
+}

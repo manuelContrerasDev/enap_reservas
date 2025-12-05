@@ -20,7 +20,7 @@ const optionalStringMax = (max: number) =>
 /* ============================================================
  * ENUM ROLES
  * ============================================================*/
-export const UserRoleEnum = z.enum(["ADMIN", "SOCIO", "INVITADO"]);
+export const UserRoleEnum = z.enum(["ADMIN", "SOCIO", "EXTERNO"]);
 
 /* ============================================================
  * REGISTRO

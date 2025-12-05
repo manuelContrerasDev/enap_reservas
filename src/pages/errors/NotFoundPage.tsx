@@ -2,8 +2,19 @@ import React from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { MapPinOff } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { PATHS } from "@/routes/paths";
 
 const NotFoundPage: React.FC = () => {
+  const { user } = useAuth();
+
+  // Redirección inteligente según rol
+  const homePath = user
+    ? user.role === "ADMIN"
+      ? PATHS.ADMIN
+      : PATHS.ESPACIOS
+    : PATHS.AUTH_LOGIN;
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center transition-colors bg-[#f8fafc] dark:bg-[#1f2937]">
       <Helmet>
@@ -28,7 +39,7 @@ const NotFoundPage: React.FC = () => {
 
         {/* Botón */}
         <Link
-          to="/"
+          to={homePath}
           className="bg-[#004b80] hover:bg-[#00375f] text-white font-semibold px-6 py-2 rounded-lg transition-colors"
         >
           Volver al inicio

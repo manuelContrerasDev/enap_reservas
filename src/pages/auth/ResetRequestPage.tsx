@@ -1,14 +1,27 @@
+// src/pages/auth/ResetRequestPage.tsx
+
+import React from "react";
+import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import {
   resetRequestSchema,
   ResetRequestSchemaType,
 } from "@/validators/auth.schema";
 
-import { useAuthForm } from "@/hooks/useAuthForm";
-import LoginBase from "@/auth/components/LoginBase";
+import AuthBGLayout from "@/auth/components/AuthBGLayout";
+import AuthHeader from "@/auth/components/AuthHeader";
+import AuthInput from "@/auth/components/AuthInput";
+import AuthButton from "@/auth/components/AuthButton";
+
 import { useNotificacion } from "@/context/NotificacionContext";
 import { useNavigate } from "react-router-dom";
+import { PATHS } from "@/routes/paths";
+
+import heroCabana from "@/assets/enap-login.png";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function ResetRequestPage() {
   const navigate = useNavigate();
@@ -17,67 +30,84 @@ export default function ResetRequestPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ResetRequestSchemaType>({
     resolver: zodResolver(resetRequestSchema),
   });
 
-  const { loading, serverError, handleSubmit: send } = useAuthForm(
-    resetRequestSchema,
-    "/api/auth/reset-request"
-  );
-
   const onSubmit = async (data: ResetRequestSchemaType) => {
-    const result = await send(data);
+    if (!API_URL) {
+      agregarNotificacion("Error interno: API no configurada.", "error");
+      return;
+    }
 
-    if (result.ok) {
-      agregarNotificacion(
-        "Si el correo existe, recibirás un enlace de recuperación.",
-        "info"
-      );
+    try {
+      const res = await fetch(`${API_URL}/api/auth/reset-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json.ok) {
+        agregarNotificacion(
+          json.message || "No se pudo enviar el correo.",
+          "error"
+        );
+        return;
+      }
+
+      navigate(`${PATHS.AUTH_EMAIL_SENT}?type=reset`, {
+        replace: true,
+      });
+    } catch (err) {
+      console.error("❌ ResetRequest error:", err);
+      agregarNotificacion("Error de conexión con el servidor.", "error");
     }
   };
 
   return (
-    <LoginBase
-      title="Recuperar contraseña"
-      description="Ingresa tu correo para recibir instrucciones"
-      gradientFrom="#4DB6AC"
-      gradientTo="#00796B"
-      accentColor="#00796B"
-      loading={loading}
-      errorMessage={serverError ?? undefined}
-    >
-      {/* Botón volver */}
-      <button
-        onClick={() => navigate(-1)}
-        className="text-sm text-gray-600 hover:text-gray-900 mb-4"
+    <AuthBGLayout backgroundImage={heroCabana}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="w-full max-w-md space-y-8"
       >
-        ← Volver
-      </button>
+        {/* HEADER */}
+        <AuthHeader
+          title="Recuperar Contraseña"
+          subtitle="Ingresa tu correo para recibir las instrucciones."
+        />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {/* Email */}
-        <div className="flex flex-col space-y-1">
-          <label className="text-sm font-medium text-gray-700">Correo electrónico</label>
-          <input
-            type="email"
-            {...register("email")}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white 
-            focus:ring-2 focus:ring-[#00796B] focus:border-[#00796B] outline-none"
-            placeholder="correo@ejemplo.com"
-          />
-          {errors.email && <p className="text-red-600 text-sm">{errors.email.message}</p>}
-        </div>
-
+        {/* VOLVER */}
         <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#00796B] text-white font-semibold py-3 rounded-lg shadow-md hover:bg-[#00695C] transition-all"
+          onClick={() => navigate(PATHS.AUTH_LOGIN)}
+          className="
+            text-sm font-medium
+            text-[#003D52] hover:text-[#002a3b]
+            transition-colors
+          "
         >
-          {loading ? "Enviando..." : "Enviar instrucciones"}
+          ← Volver al inicio de sesión
         </button>
-      </form>
-    </LoginBase>
+
+        {/* FORM */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <AuthInput
+            label="Correo electrónico"
+            placeholder="usuario@sindicatoenap.cl"
+            type="email"
+            error={errors.email?.message}
+            {...register("email")}
+          />
+
+          <AuthButton type="submit" loading={isSubmitting}>
+            Enviar instrucciones
+          </AuthButton>
+        </form>
+      </motion.div>
+    </AuthBGLayout>
   );
 }

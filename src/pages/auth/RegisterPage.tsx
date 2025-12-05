@@ -1,28 +1,94 @@
-import { RegisterForm } from "@/auth/components/RegisterForm";
-import LoginBase from "@/auth/components/LoginBase";
+// src/pages/auth/RegisterPage.tsx
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
-export default function RegisterPro() {
+import AuthBGLayout from "@/auth/components/AuthBGLayout";
+import AuthHeader from "@/auth/components/AuthHeader";
+import AuthButton from "@/auth/components/AuthButton"; // (si el form lo usa internamente)
+import { RegisterForm } from "@/auth/components/RegisterForm";
+
+import { useNotificacion } from "@/context/NotificacionContext";
+import { PATHS } from "@/routes/paths";
+
+import heroCabana from "@/assets/enap-login.png";
+
+export default function RegisterPage() {
   const navigate = useNavigate();
+  const { agregarNotificacion } = useNotificacion();
+
+  const [loading, setLoading] = useState(false);
+  const [errorGlobal, setErrorGlobal] = useState<string | null>(null);
 
   return (
-    <LoginBase
-      title="Crear cuenta"
-      description="Regístrate para acceder al sistema de reservas."
-      gradientFrom="#4DB6AC"
-      gradientTo="#00796B"
-      accentColor="#00796B"
-    >
-      <RegisterForm />
+    <AuthBGLayout backgroundImage={heroCabana}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="w-full max-w-md space-y-10"
+      >
+        {/* HEADER */}
+        <AuthHeader
+          title="Crear Cuenta ENAP"
+          subtitle="Regístrate para poder reservar cabañas, quinchos y espacios."
+        />
 
-      <div className="text-center text-dark mt-6">
-        <button
-          onClick={() => navigate("/auth/login")}
-          className="text-[#00796B] hover:text-[#004D40]"
-        >
-          ¿Ya tienes cuenta? Inicia sesión →
-        </button>
-      </div>
-    </LoginBase>
+        {/* FORMULARIO */}
+        <div className="space-y-6">
+          <RegisterForm
+            onStartLoading={() => {
+              setLoading(true);
+              setErrorGlobal(null);
+            }}
+            onFinishLoading={() => setLoading(false)}
+            onError={(msg) => {
+              setErrorGlobal(msg);
+              agregarNotificacion(msg, "error");
+            }}
+            onSuccess={() => {
+              agregarNotificacion(
+                "Cuenta creada correctamente 🎉 Revisa tu correo para confirmarla.",
+                "success"
+              );
+
+              navigate(`${PATHS.AUTH_EMAIL_SENT}?type=register`, {
+                replace: true,
+              });
+            }}
+          />
+
+          {/* ERROR GLOBAL */}
+          {errorGlobal && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-red-600 text-center text-sm font-medium"
+            >
+              {errorGlobal}
+            </motion.p>
+          )}
+
+          {/* LINKS */}
+          <div className="text-center text-sm space-y-1">
+            <button
+              onClick={() => navigate(PATHS.AUTH_LOGIN)}
+              className="text-[#C7A96A] font-semibold hover:text-[#b09058]"
+            >
+              ¿Ya tienes cuenta? Iniciar sesión →
+            </button>
+
+            <br />
+
+            <button
+              onClick={() => navigate(PATHS.AUTH_RESEND_CONFIRMATION)}
+              className="text-[#003D52] font-medium hover:underline"
+            >
+              ¿No recibiste el correo de confirmación?
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AuthBGLayout>
   );
 }

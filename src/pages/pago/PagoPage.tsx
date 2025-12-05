@@ -65,13 +65,21 @@ const PagoPage: React.FC = () => {
    * ============================================================ */
   const handlePago = async () => {
     try {
-      await iniciarPago(reservaId!);
+      const monto = reservaActual.totalClp ?? reservaActual.total;
+
+      if (!monto || monto <= 0) {
+        agregarNotificacion("El monto del pago es inválido.", "error");
+        return;
+      }
+
+      await iniciarPago(reservaId!, monto);
     } catch (error) {
       console.error("❌ Error iniciar pago:", error);
       agregarNotificacion("Error al iniciar el pago.", "error");
       setError("Ocurrió un error al procesar el pago.");
     }
   };
+
 
   /* ============================================================
    * Render principal
@@ -115,7 +123,7 @@ const PagoPage: React.FC = () => {
                 <Calendar size={16} /> Inicio:
               </span>
               <span>
-                {new Date(reservaActual.fechaInicio).toLocaleDateString("es-CL")}
+                { new Date(reservaActual.fechaInicio ?? "").toLocaleDateString("es-CL") }
               </span>
             </li>
 
@@ -124,7 +132,7 @@ const PagoPage: React.FC = () => {
                 <Calendar size={16} /> Fin:
               </span>
               <span>
-                {new Date(reservaActual.fechaFin).toLocaleDateString("es-CL")}
+                { new Date(reservaActual.fechaFin ?? "").toLocaleDateString("es-CL") }
               </span>
             </li>
 
@@ -132,13 +140,13 @@ const PagoPage: React.FC = () => {
               <span className="flex items-center gap-2">
                 <Users size={16} /> Personas:
               </span>
-              <span>{reservaActual.personas}</span>
+                <span>{reservaActual.cantidadPersonas}</span>
             </li>
 
             <li className="pt-4 border-t border-gray-200 text-lg font-bold text-[#002E3E] flex justify-between">
               <span>Total a pagar:</span>
               <span className="text-[#DEC01F]">
-                ${reservaActual.total.toLocaleString("es-CL")}
+                {(reservaActual.total ?? reservaActual.totalClp ?? 0).toLocaleString("es-CL")}
               </span>
             </li>
           </ul>
