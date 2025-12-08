@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LogOut, Sun, Moon } from "lucide-react";
 
 import { PATHS } from "../../routes/paths";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { useTheme } from "../../context/ThemeContext";
 import logoEnap from "../../assets/logo-enap.png";
 
@@ -18,7 +18,11 @@ const Header: React.FC<HeaderProps> = ({
   onRouteChange,
   extraActions,
 }) => {
-  const { userRole, userName, logout } = useAuth();
+  
+  const { user, role, logout } = useAuth();
+  const userRole = role;               // "ADMIN" | "SOCIO" | "EXTERNO" | null
+  const userName = user?.name ?? "";   // string o vacío
+
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 

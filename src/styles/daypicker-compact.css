@@ -1,0 +1,16 @@
+/* Compactar tamaño sin zoom ni scale */
+.rdp-compact .rdp {
+  --rdp-cell-size: 34px;
+  --rdp-caption-font-size: 12px;
+  --rdp-nav-size: 18px;
+  --rdp-accent-color: #005D73;
+  font-size: 12px;
+}
+
+.rdp-compact .rdp-day {
+  padding: 0 !important;
+}
+
+.rdp-compact .rdp-head_cell {
+  font-size: 10px;
+}

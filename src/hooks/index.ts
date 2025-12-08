@@ -1,18 +1,12 @@
-export * from "./useReservaFilters";
-export * from "./useFilterReservas";
-export * from "./usePagination";
-export * from "./useReservasKPIs";
-export * from "./useFadeUp";
-export * from "./useAuthForm";
-export * from "./useCalcularReserva";
-export * from "./useGuestAuth";
-export * from "./usePagination";
-export * from "./useReservaEstado";
-export * from "./useReservasAdmin";
-export * from "./useReservasSocio";
-
-
-
-
-
-
+export * from "../modules/reservas/hooks/useReservaFilters";
+export * from "@/modules/reservas/hooks/useFilterReservas";
+export * from "../components/ui/hooks/usePagination";
+export * from "../modules/reservas/hooks/useReservasKPIs";
+export * from "../components/ui/hooks/useFadeUp";
+export * from "../archive/hooks/useAuthForm";
+export * from "../archive/hooks/useCalcularReserva";
+export * from "../archive/hooks/useGuestAuth";
+export * from "../components/ui/hooks/usePagination";
+export * from "../modules/reservas/hooks/useReservaEstado";
+export * from "../modules/reservas/hooks/useReservasAdmin";
+export * from "../modules/reservas/hooks/useReservasSocio";

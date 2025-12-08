@@ -1,7 +1,7 @@
 // src/components/layout/Sidebar.tsx
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { ROUTES } from "@/routes/config";
 
 export default function Sidebar() {
@@ -62,7 +62,11 @@ export default function Sidebar() {
       {/* LOGOUT */}
       <div className="p-4 border-t border-white/10">
         <button
-          onClick={logout}
+          onClick={() => {
+            logout();
+            window.location.href = "/auth/login"; // o PATHS.AUTH_LOGIN
+          }}
+
           className="
             w-full py-2 rounded-lg text-sm font-semibold
             bg-[#FFD84D] text-[#003B4D]

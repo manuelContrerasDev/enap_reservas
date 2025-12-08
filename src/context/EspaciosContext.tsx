@@ -5,16 +5,23 @@ import {
   useState,
   useEffect,
   useMemo,
+  useCallback,
   ReactNode,
 } from "react";
 
 import { api } from "@/lib/axios";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 
 import {
   CrearEspacioType,
   EditarEspacioType,
 } from "@/validators/espacio.schema";
+
+import type { TarifaPerfil } from "@/context/auth/types/auth.types";
+
+/* ==================================================================================
+ * TIPOS
+ * ================================================================================== */
 
 export interface Espacio {
   id: string;
@@ -24,8 +31,10 @@ export interface Espacio {
   capacidad: number;
   capacidadExtra: number | null;
 
-  tarifaClp: number;
-  tarifaExterno: number | null;
+  tarifaClp: number;           // socio
+  tarifaExterno: number | null; // externo
+
+  tarifaFinal: number;         // 🔥 tarifa asignada según perfil (SOCIO / EXTERNO)
 
   extraSocioPorPersona: number | null;
   extraTerceroPorPersona: number | null;
@@ -41,6 +50,57 @@ export interface Espacio {
   updatedAt: string;
 }
 
+/* ==================================================================================
+ * HELPERS → Resolver imágenes
+ * ================================================================================== */
+const resolveImagen = (img: any): string | null => {
+  if (!img) return null;
+
+  if (/^https?:\/\//i.test(img)) return img;
+
+  try {
+    return new URL(`../../assets/${img}`, import.meta.url).href;
+  } catch {
+    return null;
+  }
+};
+
+/* ==================================================================================
+ * MAPPER → Normaliza según tarifaPerfil
+ * ================================================================================== */
+const toEspacioDTO = (e: any, tarifaPerfil: TarifaPerfil): Espacio => ({
+  id: e.id,
+  nombre: e.nombre,
+  tipo: e.tipo,
+
+  capacidad: e.capacidad,
+  capacidadExtra: e.capacidadExtra,
+
+  tarifaClp: Number(e.tarifaClp) ?? 0,
+  tarifaExterno: e.tarifaExterno != null ? Number(e.tarifaExterno) : null,
+
+  // 🔥 TARIFA DINÁMICA
+  tarifaFinal:
+    tarifaPerfil === "EXTERNO"
+      ? Number(e.tarifaExterno ?? e.tarifaClp)
+      : Number(e.tarifaClp),
+
+  extraSocioPorPersona: e.extraSocioPorPersona,
+  extraTerceroPorPersona: e.extraTerceroPorPersona,
+
+  descripcion: e.descripcion,
+  modalidadCobro: e.modalidadCobro,
+
+  activo: e.activo,
+  createdAt: e.createdAt,
+  updatedAt: e.updatedAt,
+
+  imagenUrl: resolveImagen(e.imagenUrl),
+});
+
+/* ==================================================================================
+ * CONTEXT
+ * ================================================================================== */
 interface EspaciosContextType {
   espacios: Espacio[];
   loading: boolean;
@@ -60,33 +120,11 @@ const EspaciosContext = createContext<EspaciosContextType | undefined>(
   undefined
 );
 
-/* ===============================================
- * MAPPER SEGURO
- * =============================================== */
-const toEspacioDTO = (e: any): Espacio => ({
-  id: e.id,
-  nombre: e.nombre,
-  tipo: e.tipo,
-  capacidad: e.capacidad,
-  capacidadExtra: e.capacidadExtra,
-  tarifaClp: e.tarifaClp,
-  tarifaExterno: e.tarifaExterno,
-  extraSocioPorPersona: e.extraSocioPorPersona,
-  extraTerceroPorPersona: e.extraTerceroPorPersona,
-  descripcion: e.descripcion,
-  imagenUrl: e.imagenUrl,
-  modalidadCobro: e.modalidadCobro,
-  activo: e.activo,
-  createdAt: e.createdAt,
-  updatedAt: e.updatedAt,
-});
-
-/* ===============================================
+/* ==================================================================================
  * PROVIDER
- * =============================================== */
+ * ================================================================================== */
 export const EspaciosProvider = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
-  const userRole = user?.role ?? "SOCIO";
+  const { role, isAdmin, tarifaPerfil } = useAuth();
 
   const [espacios, setEspacios] = useState<Espacio[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,129 +132,170 @@ export const EspaciosProvider = ({ children }: { children: ReactNode }) => {
   /* ============================================================
    * GET — Cargar catálogo
    * ============================================================ */
-  const cargarEspacios = async (filters: Record<string, any> = {}) => {
-    try {
-      setLoading(true);
+  const cargarEspacios = useCallback(
+    async (filters: Record<string, any> = {}) => {
+      try {
+        setLoading(true);
 
-      const endpoint =
-        userRole === "ADMIN" ? "/espacios/admin" : "/espacios";
+        const endpoint = isAdmin ? "/espacios/admin" : "/espacios";
 
-      const res = await api.get<{ ok: boolean; data: any[] }>(endpoint, {
-        params: filters,
-      });
+        const res = await api.get<{ ok: boolean; data: any[] }>(endpoint, {
+          params: isAdmin ? undefined : filters,
+        });
 
-      const raw = Array.isArray(res.data?.data) ? res.data.data : [];
+        const raw = Array.isArray(res.data?.data) ? res.data.data : [];
 
-      let list: Espacio[] = [];
+        const list = isAdmin
+          ? raw.map((x) => toEspacioDTO(x, tarifaPerfil))
+          : raw.filter((x) => x.activo).map((x) => toEspacioDTO(x, tarifaPerfil));
 
-      if (userRole === "ADMIN") {
-        list = raw.map(toEspacioDTO);
-      } else {
-        list = raw.filter((x) => x.activo).map(toEspacioDTO);
+        setEspacios(list);
+      } catch (err) {
+        console.error("❌ Error al cargar espacios:", err);
+        setEspacios([]);
+      } finally {
+        setLoading(false);
       }
+    },
+    [isAdmin, tarifaPerfil]
+  );
 
-      setEspacios(list);
-    } catch (err) {
-      console.error("❌ Error al cargar espacios:", err);
-      setEspacios([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Carga inicial + cada cambio de rol
+  // Carga inicial + cambio de rol
   useEffect(() => {
     cargarEspacios();
-  }, [userRole]);
+  }, [cargarEspacios]);
 
   /* ============================================================
-   * CRUD
+   * CRUD — Crear
    * ============================================================ */
+  const crearEspacio = useCallback(
+    async (data: CrearEspacioType) => {
+      try {
+        const res = await api.post<{ ok: boolean; data: any }>(
+          "/espacios",
+          data
+        );
 
-  const crearEspacio = async (data: CrearEspacioType) => {
-    try {
-      const res = await api.post<{ ok: boolean; data: any }>(
-        "/espacios",
-        data
-      );
-      if (!res.data?.ok) return null;
-      await cargarEspacios();
-      return toEspacioDTO(res.data.data);
-    } catch {
-      return null;
-    }
-  };
+        if (!res.data?.ok) return null;
 
-  const editarEspacio = async (id: string, data: EditarEspacioType) => {
-    try {
-      const res = await api.put<{ ok: boolean; data: any }>(
-        `/espacios/${id}`,
-        data
-      );
-      if (!res.data?.ok) return null;
-      await cargarEspacios();
-      return toEspacioDTO(res.data.data);
-    } catch {
-      return null;
-    }
-  };
+        await cargarEspacios();
+        return toEspacioDTO(res.data.data, tarifaPerfil);
+      } catch (error) {
+        console.error("❌ Error al crear espacio:", error);
+        return null;
+      }
+    },
+    [cargarEspacios, tarifaPerfil]
+  );
 
-  const eliminarEspacio = async (id: string) => {
-    try {
-      const res = await api.delete<{ ok: boolean }>(`/espacios/${id}`);
-      await cargarEspacios();
-      return !!res.data?.ok;
-    } catch {
-      return false;
-    }
-  };
+  /* ============================================================
+   * CRUD — Editar
+   * ============================================================ */
+  const editarEspacio = useCallback(
+    async (id: string, data: EditarEspacioType) => {
+      try {
+        const res = await api.put<{ ok: boolean; data: any }>(
+          `/espacios/${id}`,
+          data
+        );
 
-  const toggleActivo = async (id: string) => {
-    try {
-      const res = await api.patch<{ ok: boolean; data: any }>(
-        `/espacios/${id}/toggle`
-      );
-      if (!res.data?.ok) return null;
-      await cargarEspacios();
-      return toEspacioDTO(res.data.data);
-    } catch {
-      return null;
-    }
-  };
+        if (!res.data?.ok) return null;
+
+        await cargarEspacios();
+        return toEspacioDTO(res.data.data, tarifaPerfil);
+      } catch (error) {
+        console.error("❌ Error al editar espacio:", error);
+        return null;
+      }
+    },
+    [cargarEspacios, tarifaPerfil]
+  );
+
+  /* ============================================================
+   * CRUD — Eliminar
+   * ============================================================ */
+  const eliminarEspacio = useCallback(
+    async (id: string) => {
+      try {
+        const res = await api.delete<{ ok: boolean }>(`/espacios/${id}`);
+
+        if (!res.data?.ok) return false;
+
+        await cargarEspacios();
+        return true;
+      } catch (error) {
+        console.error("❌ Error al eliminar espacio:", error);
+        return false;
+      }
+    },
+    [cargarEspacios]
+  );
+
+  /* ============================================================
+   * CRUD — Toggle activo
+   * ============================================================ */
+  const toggleActivo = useCallback(
+    async (id: string) => {
+      try {
+        const res = await api.patch<{ ok: boolean; data: any }>(
+          `/espacios/${id}/toggle`
+        );
+
+        if (!res.data?.ok) return null;
+
+        await cargarEspacios();
+        return toEspacioDTO(res.data.data, tarifaPerfil);
+      } catch (error) {
+        console.error("❌ Error al cambiar estado:", error);
+        return null;
+      }
+    },
+    [cargarEspacios, tarifaPerfil]
+  );
 
   /* ============================================================
    * GET — Espacio individual
    * ============================================================ */
-  const obtenerEspacio = async (id: string) => {
-    try {
-      const res = await api.get<{ ok: boolean; data: any }>(
-        `/espacios/${id}`
-      );
+  const obtenerEspacio = useCallback(
+    async (id: string) => {
+      try {
+        const res = await api.get<{ ok: boolean; data: any }>(
+          `/espacios/${id}`
+        );
 
-      if (!res.data?.data) return null;
+        if (!res.data?.ok) return null;
 
-      return toEspacioDTO(res.data.data);
-    } catch {
-      return null;
-    }
-  };
+        return toEspacioDTO(res.data.data, tarifaPerfil);
+      } catch (error) {
+        console.error("❌ Error obteniendo espacio:", error);
+        return null;
+      }
+    },
+    [tarifaPerfil]
+  );
 
   /* ============================================================
    * GET — Disponibilidad
    * ============================================================ */
-  const obtenerDisponibilidad = async (id: string) => {
+  const obtenerDisponibilidad = useCallback(async (id: string) => {
     try {
       const res = await api.get<{
         ok: boolean;
         fechas: { fechaInicio: string; fechaFin: string }[];
       }>(`/espacios/${id}/disponibilidad`);
 
+      if (!res.data?.ok) return [];
+
       return res.data.fechas ?? [];
-    } catch {
+    } catch (error) {
+      console.error("❌ Error obteniendo disponibilidad:", error);
       return [];
     }
-  };
+  }, []);
 
+  /* ============================================================
+   * VALUE MEMO
+   * ============================================================ */
   const value = useMemo(
     () => ({
       espacios,
@@ -229,7 +308,17 @@ export const EspaciosProvider = ({ children }: { children: ReactNode }) => {
       obtenerEspacio,
       obtenerDisponibilidad,
     }),
-    [espacios, loading]
+    [
+      espacios,
+      loading,
+      cargarEspacios,
+      crearEspacio,
+      editarEspacio,
+      eliminarEspacio,
+      toggleActivo,
+      obtenerEspacio,
+      obtenerDisponibilidad,
+    ]
   );
 
   return (
@@ -239,6 +328,9 @@ export const EspaciosProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+/* ==================================================================================
+ * HOOK
+ * ================================================================================== */
 export const useEspacios = () => {
   const ctx = useContext(EspaciosContext);
   if (!ctx)

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import LoaderTransition from "../ui/LoaderTransition";
 import Footer from "../layout/Footer";
 import Sidebar from "@/components/layout/Sidebar";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/context/auth";
 
 const LOADER_MIN_MS = 300;
 const LOADER_MAX_MS = 1200;

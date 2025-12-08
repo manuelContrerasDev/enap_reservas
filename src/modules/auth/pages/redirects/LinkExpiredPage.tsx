@@ -1,0 +1,75 @@
+// src/pages/auth/LinkExpiredPage.tsx
+
+import { motion } from "framer-motion";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
+import AuthBGLayout from "@/modules/auth/components/AuthBGLayout";
+import AuthHeader from "@/modules/auth/components/AuthHeader";
+import AuthButton from "@/modules/auth/components/AuthButton";
+
+import heroCabana from "@/assets/enap-login.png";
+import { PATHS } from "@/routes/paths";
+
+export default function LinkExpiredPage() {
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+
+  const type = params.get("type") || "confirm"; 
+  const isReset = type === "reset";
+
+  const title = isReset ? "Enlace de recuperación vencido" : "Enlace vencido";
+  const subtitle = isReset
+    ? "El enlace para restablecer tu contraseña ha expirado."
+    : "Este enlace ya no es válido o ha expirado.";
+
+  const helpText = isReset
+    ? "Puedes solicitar un nuevo enlace para recuperar tu contraseña."
+    : "Puedes solicitar un nuevo enlace de confirmación.";
+
+  const resendPath = isReset
+    ? PATHS.AUTH_RESET_REQUEST
+    : PATHS.AUTH_RESEND_CONFIRMATION;
+
+  return (
+    <AuthBGLayout backgroundImage={heroCabana}>
+      <motion.div
+        initial={{ opacity: 0, y: 25 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+        className="space-y-8"
+      >
+        <AuthHeader title={title} subtitle={subtitle} />
+
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <p className="text-red-600 font-semibold text-lg">
+            ✖ El enlace ha expirado o es inválido.
+          </p>
+
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Por motivos de seguridad, los enlaces tienen una duración limitada.
+            {` ${helpText}`}
+          </p>
+
+          <div className="space-y-3">
+            <AuthButton onClick={() => navigate(PATHS.AUTH_LOGIN)}>
+              Volver al inicio de sesión
+            </AuthButton>
+
+            <button
+              onClick={() => navigate(resendPath)}
+              className="
+                w-full py-2.5 
+                border border-[#C7A96A] text-[#C7A96A]
+                rounded-lg text-sm font-semibold
+                hover:bg-[#C7A96A] hover:text-white
+                transition-all shadow-sm
+              "
+            >
+              {isReset ? "Reenviar correo de recuperación" : "Reenviar confirmación"}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </AuthBGLayout>
+  );
+}

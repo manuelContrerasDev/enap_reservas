@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
 import { LogOut, Bell, Moon, Sun } from "lucide-react";
 
 export default function HeaderTop() {

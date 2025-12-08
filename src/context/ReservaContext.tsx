@@ -10,12 +10,12 @@ import {
   useEffect,
 } from "react";
 
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth";
+import { api } from "@/lib/axios";
+
 import { normalizarReserva } from "@/utils/normalizarReserva";
 import type { ReservaFrontend } from "@/types/ReservaFrontend";
 import type { ReservaEstado } from "@/types/enums";
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 /* ============================================================
  * 🟦 ReservaDraft — Estado temporal durante el formulario
@@ -33,36 +33,46 @@ export type ReservaDraft = Partial<ReservaFrontend> & {
 /* ============================================================
  * Payload creación
  * ============================================================ */
+// ============================================================
+// Payload creación (SYNC con backend/baseReservaSchema)
+// ============================================================
 export interface CrearReservaPayload {
   espacioId: string;
 
   fechaInicio: string;
   fechaFin: string;
 
+  /* -------- DATOS SOCIO -------- */
   nombreSocio: string;
   rutSocio: string;
   telefonoSocio: string;
   correoEnap: string;
-  correoPersonal?: string;
+  correoPersonal?: string; // 👈 sin null
 
+  /* -------- USO RESERVA -------- */
   usoReserva: "USO_PERSONAL" | "CARGA_DIRECTA" | "TERCEROS";
   socioPresente: boolean;
 
+  /* -------- RESPONSABLE -------- */
   nombreResponsable?: string;
   rutResponsable?: string;
   emailResponsable?: string;
 
+  /* -------- CANTIDADES -------- */
   cantidadPersonas: number;
+  cantidadPersonasPiscina?: number;
 
+  /* -------- TÉRMINOS -------- */
   terminosAceptados: boolean;
-  terminosVersion?: string;
 
+  /* -------- INVITADOS -------- */
   invitados?: {
     nombre: string;
     rut: string;
     edad?: number;
   }[];
 }
+
 
 /* ============================================================
  * Query params
@@ -111,7 +121,7 @@ const ReservaContext = createContext<ReservaContextType | undefined>(undefined);
  * Provider
  * ============================================================ */
 export const ReservaProvider = ({ children }: { children: ReactNode }) => {
-  const { role, token } = useAuth();
+  const { isAdmin, isAuthenticated } = useAuth();
 
   const [reservas, setReservas] = useState<ReservaFrontend[]>([]);
   const [meta, setMeta] = useState<ReservaContextType["meta"]>(null);
@@ -124,7 +134,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   /* ============================================================
-   * Limpieza auto errores
+   * Limpieza automática de errores
    * ============================================================ */
   useEffect(() => {
     if (!error) return;
@@ -133,64 +143,66 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
   }, [error]);
 
   /* ============================================================
-   * Setter inteligente
+   * Setter inteligente para reservaActual (wizard)
    * ============================================================ */
   const setReservaActual = useCallback((partial: ReservaDraft | null) => {
     if (!partial) return setReservaActualState(null);
-
     setReservaActualState((prev) => ({ ...prev, ...partial }));
   }, []);
 
   /* ============================================================
-   * Cargar reservas (ADMIN paginado / SOCIO simple)
+   * Cargar reservas (ADMIN paginado / SOCIO-EXTERNO simple)
    * ============================================================ */
   const cargarReservas = useCallback(
     async (params?: ReservasQueryParams) => {
-      if (!token) return;
+      if (!isAuthenticated) return;
 
       setLoading(true);
       try {
         /* ---------------- ADMIN ---------------- */
-        if (role === "ADMIN") {
-          const q = new URLSearchParams();
+        if (isAdmin) {
+          const q: Record<string, any> = {};
 
           if (params?.estado && params.estado !== "TODOS")
-            q.set("estado", params.estado);
+            q.estado = params.estado;
 
-          if (params?.espacioId) q.set("espacioId", params.espacioId);
-          if (params?.socioId) q.set("socioId", params.socioId);
-          if (params?.fechaInicio) q.set("fechaInicio", params.fechaInicio);
-          if (params?.fechaFin) q.set("fechaFin", params.fechaFin);
+          if (params?.espacioId) q.espacioId = params.espacioId;
+          if (params?.socioId) q.socioId = params.socioId;
+          if (params?.fechaInicio) q.fechaInicio = params.fechaInicio;
+          if (params?.fechaFin) q.fechaFin = params.fechaFin;
 
-          q.set("page", String(params?.page ?? 1));
-          q.set("limit", String(params?.limit ?? 20));
-          q.set("sort", params?.sort ?? "fechaInicio");
-          q.set("order", params?.order ?? "desc");
+          q.page = params?.page ?? 1;
+          q.limit = params?.limit ?? 20;
+          q.sort = params?.sort ?? "fechaInicio";
+          q.order = params?.order ?? "desc";
 
-          const resp = await fetch(
-            `${API_URL}/api/reservas/admin?${q.toString()}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-
-          const data = await resp.json();
-          if (!resp.ok) throw new Error(data.error || "Error cargando reservas");
-
-          setMeta(data.meta);
-          setReservas(data.data.map(normalizarReserva));
-        }
-
-        /* ---------------- SOCIO ---------------- */
-        else {
-          const resp = await fetch(`${API_URL}/api/reservas/mias`, {
-            headers: { Authorization: `Bearer ${token}` },
+          const resp = await api.get<{
+            ok: boolean;
+            data: any[];
+            meta: ReservaContextType["meta"];
+          }>("/reservas/admin", {
+            params: q,
           });
 
-          const data = await resp.json();
-          if (!resp.ok) throw new Error(data.error || "Error cargando reservas");
+          if (!resp.data.ok) {
+            throw new Error("Error cargando reservas");
+          }
 
-          const normal = data.reservas.map(normalizarReserva);
+          setMeta(resp.data.meta ?? null);
+          setReservas(resp.data.data.map(normalizarReserva));
+        }
+
+        /* ---------------- SOCIO / EXTERNO ---------------- */
+        else {
+          const resp = await api.get<{ ok: boolean; reservas: any[] }>(
+            "/reservas/mias"
+          );
+
+          if (!resp.data.ok) {
+            throw new Error("Error cargando reservas");
+          }
+
+          const normal = resp.data.reservas.map(normalizarReserva);
           setReservas(normal);
 
           setMeta({
@@ -209,7 +221,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [token, role]
+    [isAdmin, isAuthenticated]
   );
 
   /* ============================================================
@@ -217,29 +229,27 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
    * ============================================================ */
   const crearReservaEnServidor = useCallback(
     async (payload: CrearReservaPayload): Promise<string | null> => {
-      if (!token) {
+      if (!isAuthenticated) {
         setError("No autenticado.");
         return null;
       }
 
       setLoading(true);
       try {
-        const resp = await fetch(`${API_URL}/api/reservas`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
+        const resp = await api.post<{
+          ok: boolean;
+          data?: { id?: string };
+          error?: string;
+        }>("/reservas", payload);
 
-        const data = await resp.json();
+        if (!resp.data.ok) {
+          throw new Error(resp.data.error || "Error creando reserva");
+        }
 
-        if (!resp.ok) throw new Error(data.error || "Error creando reserva");
-
-        const id = data.reserva?.id;
+        const id: string | undefined = resp.data.data?.id;
         if (!id) throw new Error("Respuesta inválida del servidor");
 
+        // recargamos reservas del usuario (o admin)
         await cargarReservas();
         return id;
       } catch (err: any) {
@@ -250,7 +260,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
       }
     },
-    [token, cargarReservas]
+    [isAuthenticated, cargarReservas]
   );
 
   /* ============================================================
@@ -258,26 +268,26 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
    * ============================================================ */
   const actualizarEstado = useCallback(
     async (id: string, estado: ReservaEstado) => {
-      if (!token) {
+      if (!isAuthenticated) {
         setError("No autenticado.");
         return;
       }
 
       try {
-        const resp = await fetch(`${API_URL}/api/reservas/${id}/estado`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ estado }),
-        });
+        const resp = await api.patch<{
+          ok: boolean;
+          reserva?: any;
+          error?: string;
+        }>(`/reservas/${id}/estado`, { estado });
 
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "Error actualizando");
+        if (!resp.data.ok || !resp.data.reserva) {
+          throw new Error(resp.data.error || "Error actualizando reserva");
+        }
 
         setReservas((prev) =>
-          prev.map((r) => (r.id === id ? normalizarReserva(data.reserva) : r))
+          prev.map((r) =>
+            r.id === id ? normalizarReserva(resp.data.reserva) : r
+          )
         );
       } catch (err: any) {
         console.error("❌ actualizarEstado:", err);
@@ -285,7 +295,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
         throw err;
       }
     },
-    [token]
+    [isAuthenticated]
   );
 
   /* ============================================================
@@ -293,19 +303,19 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
    * ============================================================ */
   const eliminarReserva = useCallback(
     async (id: string) => {
-      if (!token) {
+      if (!isAuthenticated) {
         setError("No autenticado.");
         return;
       }
 
       try {
-        const resp = await fetch(`${API_URL}/api/reservas/${id}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const resp = await api.delete<{ ok: boolean; error?: string }>(
+          `/reservas/${id}`
+        );
 
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "Error al eliminar reserva");
+        if (!resp.data.ok) {
+          throw new Error(resp.data.error || "Error al eliminar reserva");
+        }
 
         setReservas((prev) => prev.filter((r) => r.id !== id));
       } catch (err: any) {
@@ -314,7 +324,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
         throw err;
       }
     },
-    [token]
+    [isAuthenticated]
   );
 
   /* ============================================================
