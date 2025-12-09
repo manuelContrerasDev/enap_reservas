@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaFrontend } from "@/types/ReservaBackend";
 import type { ReservaFilters } from "./useReservaFilters";
 
 const parseLocalDate = (s?: string) => {

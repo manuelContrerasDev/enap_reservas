@@ -1,13 +1,13 @@
 // ============================================================
-// DatosSocioForm.tsx — UX/UI Premium ENAP + Semántica + A11Y (FIXED)
+// DatosSocioForm.tsx — UX/UI Premium ENAP 2025 (VERSIÓN FINAL SINCRONIZADA)
 // ============================================================
 
 import React from "react";
 import {
   UseFormRegister,
   UseFormWatch,
-  UseFormSetValue,
   FieldErrors,
+  UseFormSetValue,
 } from "react-hook-form";
 
 import { ReservaFrontendType } from "@/validators/reserva.schema";
@@ -31,23 +31,17 @@ const DatosSocioForm: React.FC<Props> = ({
   const correoEnap = watch("correoEnap") ?? "";
   const correoPersonal = watch("correoPersonal") ?? "";
 
-  const updateField = (
-    field: keyof ReservaFrontendType,
-    value: string
-  ) => {
-    setValue(field, value, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+  const update = (field: keyof ReservaFrontendType, value: string) => {
+    setValue(field, value, { shouldDirty: true, shouldValidate: true });
   };
 
   return (
-    <fieldset className="space-y-5 border-t pt-6">
+    <fieldset className="space-y-6 border-t pt-6">
       <legend className="text-lg font-semibold text-[#002E3E]">
         Datos del Socio ENAP
       </legend>
 
-      {/* =============== NOMBRE COMPLETO =============== */}
+      {/* ============================= Nombre ============================= */}
       <div className="flex flex-col gap-1">
         <label htmlFor="nombreSocio" className="text-sm font-medium text-gray-700">
           Nombre completo
@@ -57,14 +51,14 @@ const DatosSocioForm: React.FC<Props> = ({
           id="nombreSocio"
           type="text"
           autoComplete="name"
-          {...register("nombreSocio")}        // 👈 FIX
+          placeholder="Ej: Felipe Contreras Soto"
+          {...register("nombreSocio")}
           value={nombreSocio}
-          onChange={(e) => updateField("nombreSocio", e.target.value)} 
+          onChange={(e) => update("nombreSocio", e.target.value)}
           className="
             rounded-lg border px-4 py-3 text-sm shadow-sm
-            focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
+            focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
           "
-          placeholder="Ej: Felipe Contreras Soto"
         />
 
         {errors.nombreSocio && (
@@ -72,9 +66,8 @@ const DatosSocioForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* =============== RUT & TELÉFONO =============== */}
+      {/* ======================= RUT + Teléfono ======================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-
         {/* RUT */}
         <div className="flex flex-col gap-1">
           <label htmlFor="rutSocio" className="text-sm font-medium text-gray-700">
@@ -85,14 +78,14 @@ const DatosSocioForm: React.FC<Props> = ({
             id="rutSocio"
             type="text"
             autoComplete="off"
+            placeholder="12.345.678-9"
             {...register("rutSocio")}
             value={rutSocio}
-            onChange={(e) => updateField("rutSocio", e.target.value)}
+            onChange={(e) => update("rutSocio", e.target.value)}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
+              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
             "
-            placeholder="Ej: 12.345.678-9"
           />
 
           {errors.rutSocio && (
@@ -100,7 +93,7 @@ const DatosSocioForm: React.FC<Props> = ({
           )}
         </div>
 
-        {/* TELÉFONO */}
+        {/* Teléfono */}
         <div className="flex flex-col gap-1">
           <label htmlFor="telefonoSocio" className="text-sm font-medium text-gray-700">
             Teléfono
@@ -110,14 +103,14 @@ const DatosSocioForm: React.FC<Props> = ({
             id="telefonoSocio"
             type="tel"
             autoComplete="tel"
+            placeholder="Ej: +56 9 8765 4321"
             {...register("telefonoSocio")}
             value={telefonoSocio}
-            onChange={(e) => updateField("telefonoSocio", e.target.value)}
+            onChange={(e) => update("telefonoSocio", e.target.value)}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
+              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
             "
-            placeholder="Ej: +56 9 8765 4321"
           />
 
           {errors.telefonoSocio && (
@@ -126,10 +119,9 @@ const DatosSocioForm: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* =============== CORREOS =============== */}
+      {/* ============================ Correos ============================ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-
-        {/* CORREO ENAP */}
+        {/* Correo ENAP */}
         <div className="flex flex-col gap-1">
           <label htmlFor="correoEnap" className="text-sm font-medium text-gray-700">
             Correo ENAP
@@ -139,14 +131,14 @@ const DatosSocioForm: React.FC<Props> = ({
             id="correoEnap"
             type="email"
             autoComplete="email"
+            placeholder="usuario@enap.cl"
             {...register("correoEnap")}
             value={correoEnap}
-            onChange={(e) => updateField("correoEnap", e.target.value)}
+            onChange={(e) => update("correoEnap", e.target.value)}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
+              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
             "
-            placeholder="Ej: usuario@enap.cl"
           />
 
           {errors.correoEnap && (
@@ -154,9 +146,12 @@ const DatosSocioForm: React.FC<Props> = ({
           )}
         </div>
 
-        {/* CORREO PERSONAL */}
+        {/* Correo Personal */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="correoPersonal" className="text-sm font-medium text-gray-700">
+          <label
+            htmlFor="correoPersonal"
+            className="text-sm font-medium text-gray-700"
+          >
             Correo personal (opcional)
           </label>
 
@@ -164,18 +159,20 @@ const DatosSocioForm: React.FC<Props> = ({
             id="correoPersonal"
             type="email"
             autoComplete="personal-email"
+            placeholder="ej: felipe.c@gmail.com"
             {...register("correoPersonal")}
             value={correoPersonal}
-            onChange={(e) => updateField("correoPersonal", e.target.value)}
+            onChange={(e) => update("correoPersonal", e.target.value)}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
+              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
             "
-            placeholder="Ej: felipe.c@gmail.com"
           />
 
           {errors.correoPersonal && (
-            <span className="text-xs text-red-600">{errors.correoPersonal.message}</span>
+            <span className="text-xs text-red-600">
+              {errors.correoPersonal.message}
+            </span>
           )}
         </div>
       </div>

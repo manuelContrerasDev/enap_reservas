@@ -1,6 +1,6 @@
 // src/hooks/useReservasAdmin.ts
 import { useEffect, useState, useCallback } from "react";
-import { ReservaFrontend } from "@/types/ReservaFrontend";
+import { ReservaFrontend } from "@/types/ReservaBackend";
 import { ReservaEstado } from "@/types/enums";
 import { useAuth } from "@/context/auth"
 ;

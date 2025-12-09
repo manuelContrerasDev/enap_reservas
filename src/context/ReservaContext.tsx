@@ -14,7 +14,7 @@ import { useAuth } from "@/context/auth";
 import { api } from "@/lib/axios";
 
 import { normalizarReserva } from "@/utils/normalizarReserva";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaFrontend } from "@/types/ReservaBackend";
 import type { ReservaEstado } from "@/types/enums";
 
 /* ============================================================

@@ -5,11 +5,11 @@ import { ReservaEstado } from "@/types/enums";
 export interface InvitadoFrontend {
   id: string;
   nombre: string;
-  rut?: string | null;
+  rut: string;
   edad?: number | null;
 }
 
-export interface ReservaFrontend {
+export interface ReservaBackend {
   id: string;
 
   espacioId: string;

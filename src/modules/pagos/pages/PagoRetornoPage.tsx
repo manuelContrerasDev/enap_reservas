@@ -15,7 +15,7 @@ export default function PagoRetornoPage() {
 
     // Validaciones mínimas
     if (!pagoId || !reservaId) {
-      navigate(PATHS.PAGO_WEBPAY_FINAL + "?estado=error");
+      navigate(`${PATHS.PAGO_WEBPAY_FINAL}?estado=error`, { replace: true });
       return;
     }
 

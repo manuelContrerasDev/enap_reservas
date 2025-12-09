@@ -1,5 +1,5 @@
 // ============================================================
-// TerminosAceptacion.tsx — Checkbox ENAP
+// TerminosAceptacion.tsx — ENAP Premium (Versión Final)
 // ============================================================
 
 import React from "react";
@@ -13,14 +13,14 @@ interface Props {
 
 const TerminosAceptacion: React.FC<Props> = ({ register, errors }) => {
   return (
-    <div className="space-y-1">
-      <label className="flex items-center gap-3 text-sm text-gray-700">
+    <fieldset className="space-y-1">
+      <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
         <input
           type="checkbox"
           {...register("terminosAceptados")}
-          className="h-4 w-4 text-[#005D73] focus:ring-[#005D73]"
+          className="h-4 w-4 text-[#005D73] border-gray-300 rounded focus:ring-[#005D73]"
         />
-        <span>Acepto los términos y condiciones de uso del recinto.</span>
+        <span>Acepto los términos y condiciones del recinto ENAP.</span>
       </label>
 
       {errors.terminosAceptados && (
@@ -28,7 +28,7 @@ const TerminosAceptacion: React.FC<Props> = ({ register, errors }) => {
           {errors.terminosAceptados.message}
         </span>
       )}
-    </div>
+    </fieldset>
   );
 };
 

@@ -1,79 +1,109 @@
-// src/utils/calcularTotalReservaFrontend.ts
+// ============================================================
+// calcularTotalReservaFrontend.ts — VERSIÓN OFICIAL ENAP 2025
+// Mantiene paridad 1:1 con el backend.
+// ============================================================
 
-type TipoEspacioFrontend = "CABANA" | "QUINCHO" | "PISCINA";
+export type TipoEspacioFrontend = "CABANA" | "QUINCHO" | "PISCINA";
+export type ModalidadCobroFrontend = "POR_NOCHE" | "POR_DIA" | "POR_PERSONA";
+export type UsoReservaFrontend = "USO_PERSONAL" | "CARGA_DIRECTA" | "TERCEROS";
 
 interface Params {
   espacio: {
     tipo: TipoEspacioFrontend;
-    tarifaClp: number | null;
-    tarifaExterno: number | null;
+    modalidadCobro: ModalidadCobroFrontend;
+
+    precioBaseSocio: number;
+    precioBaseExterno: number;
+
+    precioPersonaSocio: number;
+    precioPersonaExterno: number;
+
+    precioPiscinaSocio: number;
+    precioPiscinaExterno: number;
   };
+
   dias: number;
-  data: {
-    usoReserva?: "USO_PERSONAL" | "CARGA_DIRECTA" | "TERCEROS";
-    invitados?: { edad?: number | null }[];
-    cantidadPersonasPiscina?: number;
-  };
+
+  cantidadAdultos: number;
+  cantidadNinos: number;
+  cantidadPiscina: number;
+
+  usoReserva: UsoReservaFrontend;
 }
 
-export function calcularTotalReservaFrontend({ espacio, dias, data }: Params) {
+export function calcularTotalReservaFrontend({
+  espacio,
+  dias,
+  cantidadAdultos,
+  cantidadNinos,
+  cantidadPiscina,
+  usoReserva,
+}: Params) {
+  
   // ============================================================
-  // 1. SOCIO vs EXTERNO según usoReserva
+  // 1. SOCIO o EXTERNO (mismo criterio que backend)
   // ============================================================
-  const usoReserva = data.usoReserva ?? "USO_PERSONAL";
   const esSocio =
-    usoReserva === "USO_PERSONAL" || usoReserva === "CARGA_DIRECTA";
+    usoReserva === "USO_PERSONAL" ||
+    usoReserva === "CARGA_DIRECTA";
+
+  const tBase   = esSocio ? espacio.precioBaseSocio     : espacio.precioBaseExterno;
+  const tPersona = esSocio ? espacio.precioPersonaSocio : espacio.precioPersonaExterno;
+  const tPiscina = esSocio ? espacio.precioPiscinaSocio : espacio.precioPiscinaExterno;
 
   // ============================================================
-  // 2. Tarifas base desde espacio
+  // 2. BASE según modalidad de cobro
   // ============================================================
-  const tarifaSocioBase = espacio.tarifaClp ?? 0;
-  const tarifaExternoBase = espacio.tarifaExterno ?? tarifaSocioBase;
+  let precioBaseSnapshot = 0;
 
-  const tarifaBaseAplicada = esSocio ? tarifaSocioBase : tarifaExternoBase;
+  if (
+    espacio.modalidadCobro === "POR_NOCHE" ||
+    espacio.modalidadCobro === "POR_DIA"
+  ) {
+    precioBaseSnapshot = tBase * Math.max(dias, 1);
+  }
 
-  // CAB/QUIN: base * días / PISCINA: sin base
-  const base =
-    espacio.tipo === "PISCINA" ? 0 : tarifaBaseAplicada * Math.max(dias, 1);
-
-  // ============================================================
-  // 3. Invitados — solo pagan mayores (>= 13 años)
-  // ============================================================
-  const invitados = data.invitados ?? [];
-  const mayores = invitados.filter((i) => (i.edad ?? 13) >= 13).length;
-
-  const TARIFA_INVITADO_SOCIO = 3500;
-  const TARIFA_INVITADO_EXTERNO = 4000;
-
-  const totalInvitados = esSocio
-    ? mayores * TARIFA_INVITADO_SOCIO
-    : mayores * TARIFA_INVITADO_EXTERNO;
-
-  // ============================================================
-  // 4. Piscina — regla 5 gratis para socio
-  // ============================================================
-  const TARIFA_PISCINA_SOCIO = 3500;
-  const TARIFA_PISCINA_EXTERNO = 4500;
-
-  const cantPiscina = Number(data.cantidadPersonasPiscina ?? 0);
-  let totalPiscina = 0;
-
-  if (esSocio) {
-    const excedentes = Math.max(0, cantPiscina - 5);
-    totalPiscina = excedentes * TARIFA_PISCINA_SOCIO;
-  } else {
-    totalPiscina = cantPiscina * TARIFA_PISCINA_EXTERNO;
+  // POR_PERSONA → sin base
+  if (espacio.modalidadCobro === "POR_PERSONA") {
+    precioBaseSnapshot = 0;
   }
 
   // ============================================================
-  // 5. TOTAL
+  // 3. TARIFA POR PERSONA (adultos + niños)
   // ============================================================
-  const total = base + totalInvitados + totalPiscina;
+  const precioPersonaSnapshot =
+    (cantidadAdultos + cantidadNinos) * tPersona;
+
+  // ============================================================
+  // 4. PISCINA (misma regla backend)
+  // ============================================================
+  let precioPiscinaSnapshot = 0;
+
+  if (espacio.tipo === "PISCINA") {
+    if (esSocio) {
+      // primeras 5 personas gratis
+      const excedentes = Math.max(cantidadPiscina - 5, 0);
+      precioPiscinaSnapshot = excedentes * tPiscina;
+    } else {
+      // externo paga todo
+      precioPiscinaSnapshot = cantidadPiscina * tPiscina;
+    }
+  }
+
+  // ============================================================
+  // 5. TOTAL FINAL
+  // ============================================================
+  const totalClp =
+    precioBaseSnapshot +
+    precioPersonaSnapshot +
+    precioPiscinaSnapshot;
 
   return {
-    total,
-    base,
-    totalInvitados,
-    totalPiscina,
+    totalClp,
+
+    // Snapshots para frontend → deben coincidir exactamente con backend
+    precioBaseSnapshot,
+    precioPersonaSnapshot,
+    precioPiscinaSnapshot,
   };
 }

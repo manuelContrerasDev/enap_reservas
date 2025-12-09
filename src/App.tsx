@@ -24,6 +24,8 @@ import PagoResultadoPage from "@/modules/pagos/pages/PagoResultadoPage";
 import AdminEspaciosPage from "@/modules/espacios/pages/AdminEspaciosPage";
 import TesoreriaPage from "@/modules/admin/pages/AdminTesoreriaPage";
 import AdminReservasPage from "@/modules/admin/pages/AdminReservasPage";
+import AdminReservaManualPage from "@/modules/admin/pages/AdminReservaManualPage";
+
 
 // AUTH extra
 import {
@@ -130,6 +132,7 @@ export default function App() {
           <Route path="admin/reservas" element={<AdminReservasPage />} />
           <Route path="admin/espacios" element={<AdminEspaciosPage />} />
           <Route path="admin/tesoreria" element={<TesoreriaPage />} />
+          <Route path="admin/reservas/manual" element={<AdminReservaManualPage />}/>
 
           {/* TEST */}
           <Route path="test" element={<div>TEST OK ✔</div>} />

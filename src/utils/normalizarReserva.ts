@@ -1,5 +1,5 @@
 // src/utils/normalizarReserva.ts
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaFrontend } from "@/types/ReservaBackend";
 
 /**
  * Normaliza siempre el DTO del backend ENAP v2 (admin / mias)

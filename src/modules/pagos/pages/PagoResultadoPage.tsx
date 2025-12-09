@@ -1,4 +1,7 @@
-// src/pages/pago/PagoResultadoPage.tsx
+// ============================================================
+// PagoResultadoPage.tsx — Versión Premium ENAP 2025 (FINAL)
+// ============================================================
+
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -12,35 +15,44 @@ import ResultadoAcciones from "@/modules/pagos/components/resultado/ResultadoAcc
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+// ============================================================
+// Tipado seguro del pago
+// ============================================================
+interface PagoDetalle {
+  id: string;
+  amountClp: number;
+  reservaId: string;
+  status: "APPROVED" | "REJECTED" | "CANCELLED" | "PENDING" | "CREATED";
+}
+
 export default function PagoResultadoPage() {
   const [params] = useSearchParams();
-  const { token } = useAuth(); // 🔥 USAR AuthContext en vez de localStorage
+  const { token } = useAuth();
 
-  const estadoQuery = (params.get("estado") ?? "").toLowerCase();
   const pagoId = params.get("pagoId");
-  const reservaId = params.get("reservaId");
+  const reservaQS = params.get("reservaId");
+  const estadoQS = (params.get("estado") ?? "").toLowerCase();
 
   const [loading, setLoading] = useState(true);
-  const [detalle, setDetalle] = useState<any>(null);
+  const [detalle, setDetalle] = useState<PagoDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /* ============================================================
-   * Normalizar estado Webpay
-   * ============================================================ */
-  const estado: "approved" | "cancelled" | "rejected" | "error" =
-    ["approved", "success", "authorized", "accepted"].includes(estadoQuery)
+  // ============================================================
+  // Normalizar estado recibido desde Webpay
+  // (solo para mostrar UX antes de cargar detalle real de BD)
+  // ============================================================
+  const estadoQuery: "approved" | "cancelled" | "rejected" | "error" =
+    ["approved", "success", "authorized", "accepted"].includes(estadoQS)
       ? "approved"
-      : estadoQuery === "cancelled"
+      : estadoQS === "cancelled"
       ? "cancelled"
-      : estadoQuery === "rejected"
+      : estadoQS === "rejected"
       ? "rejected"
       : "error";
 
-  const reservaFinal = reservaId ?? detalle?.reservaId; // fallback seguro
-
-  /* ============================================================
-   * Obtener detalles del pago
-   * ============================================================ */
+  // ============================================================
+  // Obtener detalle desde backend (fuente de verdad)
+  // ============================================================
   useEffect(() => {
     const fetchData = async () => {
       if (!pagoId) {
@@ -66,7 +78,7 @@ export default function PagoResultadoPage() {
           throw new Error(data.error ?? "No se pudo obtener el pago.");
         }
 
-        setDetalle(data.pago);
+        setDetalle(data.pago as PagoDetalle);
       } catch (e: any) {
         setError(e.message ?? "Error al obtener el estado del pago.");
       } finally {
@@ -77,9 +89,15 @@ export default function PagoResultadoPage() {
     fetchData();
   }, [pagoId, token]);
 
-  /* ============================================================
-   * LOADING
-   * ============================================================ */
+  // ============================================================
+  // FallBack de reservaId sincronizado
+  // ============================================================
+  const reservaFinal: string | undefined =
+  reservaQS ?? detalle?.reservaId ?? undefined;
+
+  // ============================================================
+  // LOADING
+  // ============================================================
   if (loading) {
     return (
       <section className="flex flex-col items-center justify-center py-32">
@@ -89,9 +107,9 @@ export default function PagoResultadoPage() {
     );
   }
 
-  /* ============================================================
-   * ERROR GLOBAL
-   * ============================================================ */
+  // ============================================================
+  // ERROR GLOBAL
+  // ============================================================
   if (error) {
     return (
       <main className="flex flex-col items-center justify-center py-24 px-4">
@@ -106,11 +124,25 @@ export default function PagoResultadoPage() {
     );
   }
 
-  /* ============================================================
-   * RESULTADO POR ESTADO
-   * ============================================================ */
+  // ============================================================
+  // Determinar estado final combinando Webpay+BD
+  // ============================================================
+  const estadoBD = detalle?.status.toLowerCase(); // approved, rejected...
+
+  const estadoFinal: "approved" | "rejected" | "cancelled" | "error" =
+    estadoBD === "approved"
+      ? "approved"
+      : estadoBD === "rejected"
+      ? "rejected"
+      : estadoBD === "cancelled"
+      ? "cancelled"
+      : estadoQuery; // fallback por si Webpay dice algo mientras BD carga
+
+  // ============================================================
+  // Render dinámico
+  // ============================================================
   const renderCard = () => {
-    switch (estado) {
+    switch (estadoFinal) {
       case "approved":
         return (
           <ResultadoCard

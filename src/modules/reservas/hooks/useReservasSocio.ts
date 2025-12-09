@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth";
 import { normalizarReserva } from "@/utils/normalizarReserva";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaFrontend } from "@/types/ReservaBackend";
 
 const API_URL = import.meta.env.VITE_API_URL;
 

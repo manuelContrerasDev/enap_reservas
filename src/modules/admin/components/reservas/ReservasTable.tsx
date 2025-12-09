@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Trash2, ChevronDown, ChevronRight, User } from "lucide-react";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaFrontend } from "@/types/ReservaBackend";
 import type { ReservaEstado } from "@/types/enums";
 
 const CLP = new Intl.NumberFormat("es-CL");

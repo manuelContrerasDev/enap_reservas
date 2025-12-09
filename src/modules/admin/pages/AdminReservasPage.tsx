@@ -18,7 +18,7 @@ import ReservasKPIs from "@/modules/admin/components/reservas/ReservasKPIs";
 import ReservasTable from "@/modules/admin/components/reservas/ReservasTable";
 import ReservasPagination from "@/modules/admin/components/reservas/ReservasPagination";
 
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaBackend } from "@/types/ReservaBackend";
 
 const ROWS_OPTIONS = [10, 15, 20, 50] as const;
 
@@ -43,7 +43,7 @@ const AdminReservasPage: React.FC = () => {
     eliminarReserva,
   } = useReservasAdmin();
 
-  const kpis = useReservasKPIs(reservas as ReservaFrontend[]);
+  const kpis = useReservasKPIs(reservas as ReservaBackend[]);
 
   const {
     currentPage,
@@ -92,10 +92,28 @@ const AdminReservasPage: React.FC = () => {
           </div>
         ) : (
           <>
+
             {/* HEADER */}
-            <motion.header {...fadeUp} className="mb-10">
-              <h1 className="text-3xl font-bold text-[#002E3E]">Panel de Reservas</h1>
-              <p className="text-gray-600">Gestión completa de reservas.</p>
+            <motion.header {...fadeUp} className="mb-10 flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-[#002E3E]">Panel de Reservas</h1>
+                <p className="text-gray-600">Gestión completa de reservas.</p>
+              </div>
+
+              {/* BOTÓN CREAR RESERVA MANUAL */}
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45 }}
+              >
+                <a
+                  href={PATHS.ADMIN_RESERVAS_MANUAL}
+                  className="px-4 py-2 bg-[#007B91] hover:bg-[#005F73] text-white rounded-lg shadow-md 
+                            transition-all duration-200 font-semibold"
+                >
+                  + Crear Reserva Manual
+                </a>
+              </motion.div>
             </motion.header>
 
             {/* KPIs */}

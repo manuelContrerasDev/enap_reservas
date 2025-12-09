@@ -1,13 +1,15 @@
-// src/pages/pago/PagoPage.tsx
+// ============================================================
+// PagoPage.tsx — Step 3 (Ir a Pagar) — UX/UI Premium ENAP 2025
+// ============================================================
+
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CreditCard, Loader2, AlertTriangle } from "lucide-react";
 
-import { useReserva } from "@/context/ReservaContext";
-import { usePago } from "@/context/PagoContext";
 import { useNotificacion } from "@/context/NotificacionContext";
 import { useAuth } from "@/context/auth";
+import { usePago } from "@/modules/pagos/hooks/usePago";
 
 import CheckoutProgress from "@/components/ui/CheckoutProgress";
 
@@ -15,20 +17,24 @@ import ResumenReserva from "@/modules/pagos/components/ResumenReserva";
 import TerminosPago from "@/modules/pagos/components/TerminosPago";
 import ModalTerminosEnap from "@/modules/reservas/components/modals/ModalTerminosEnap";
 
+import { PATHS } from "@/routes/paths";
+import type { ReservaFrontend } from "@/types/ReservaBackend";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
-const PagoPage: React.FC = () => {
+export default function PagoPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
   const reservaId = params.get("reservaId");
 
   const { token } = useAuth();
-  const { reservaActual, cargarReservas } = useReserva();
-  const { iniciarPago, estado, mensaje } = usePago();
   const { agregarNotificacion } = useNotificacion();
+  const { iniciarPago, estado } = usePago();
 
   const [error, setError] = useState<string | null>(null);
+  const [reserva, setReserva] = useState<ReservaFrontend | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Modal estados
   const [aceptaReglamento, setAceptaReglamento] = useState(false);
@@ -38,7 +44,7 @@ const PagoPage: React.FC = () => {
   const puedePagar = aceptaReglamento && aceptaPoliticas && estado !== "loading";
 
   /* ============================================================
-   * Validaciones iniciales robustas
+   * CARGAR RESERVA DIRECTAMENTE DESDE API
    * ============================================================ */
   useEffect(() => {
     if (!reservaId) {
@@ -46,47 +52,97 @@ const PagoPage: React.FC = () => {
       return;
     }
 
-    if (!reservaActual) {
-      // fallback: recargar reservas por si se perdió la sesión en memoria
-      cargarReservas();
+    if (!token) {
+      agregarNotificacion("Sesión expirada.", "error");
+      navigate(PATHS.AUTH_LOGIN);
       return;
     }
-  }, [reservaId, reservaActual, cargarReservas]);
+
+    let cancel = false;
+
+    const fetchReserva = async () => {
+      try {
+        const resp = await fetch(`${API_URL}/api/reservas/${reservaId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const json = await resp.json();
+
+        if (!resp.ok || !json.data) {
+          throw new Error(json.error ?? "No se pudo obtener la reserva.");
+        }
+
+        if (!cancel) {
+          setReserva(json.data);
+        }
+      } catch (err: any) {
+        if (!cancel) {
+          setError(err.message);
+        }
+      } finally {
+        if (!cancel) setLoading(false);
+      }
+    };
+
+    fetchReserva();
+    return () => {
+      cancel = true;
+    };
+  }, [reservaId, token, agregarNotificacion, navigate]);
 
   /* ============================================================
-   * Estado de error
+   * ESTADOS DE CARGA / ERROR
    * ============================================================ */
-  if (error) {
+  if (loading) {
+    return (
+      <main className="min-h-[70vh] flex flex-col items-center justify-center">
+        <Loader2 className="animate-spin text-[#002E3E]" size={48} />
+        <p className="mt-3 text-gray-600 text-sm">Cargando información…</p>
+      </main>
+    );
+  }
+
+  if (error || !reserva) {
     return (
       <section className="flex flex-col items-center justify-center py-24 text-center">
-        <AlertTriangle className="text-red-500 mb-4" size={56} />
-        <h2 className="text-2xl font-bold text-gray-800">{error}</h2>
+        <AlertTriangle className="text-red-500 mb-4" size={54} />
+        <h2 className="text-2xl font-bold text-gray-800">
+          {error ?? "Reserva no encontrada"}
+        </h2>
+
+        <button
+          onClick={() => navigate(PATHS.SOCIO_ESPACIOS)}
+          className="mt-4 bg-[#002E3E] text-white px-5 py-2 rounded-lg hover:bg-[#01384A]"
+        >
+          Volver
+        </button>
       </section>
     );
   }
 
-  if (!reservaActual) return null;
-
   /* ============================================================
-   * Datos de reserva
+   * DATOS DE RESERVA
    * ============================================================ */
   const {
-    espacioNombre = "Espacio",
+    espacioNombre,
     fechaInicio,
     fechaFin,
-    dias = 1,
-    cantidadPersonas = 1,
+    dias,
+    cantidadPersonas,
     totalClp,
-  } = reservaActual;
+  } = reserva;
 
   const monto = totalClp ?? 0;
 
   /* ============================================================
-   * Iniciar pago
+   * INICIAR PAGO (usando módulo nuevo usePago)
    * ============================================================ */
   const handlePago = async () => {
     if (!puedePagar) {
-      agregarNotificacion("Debes aceptar el reglamento y las políticas antes de continuar.", "info");
+      agregarNotificacion(
+        "Debes aceptar el reglamento y las políticas antes de continuar.",
+        "info"
+      );
       return;
     }
 
@@ -96,13 +152,16 @@ const PagoPage: React.FC = () => {
     }
 
     try {
-      await iniciarPago(reservaId!, monto);
+      await iniciarPago(reservaId!); // ahora NO se pasa el monto (lo calcula BE)
     } catch (err) {
       console.error("❌ Error iniciarPago:", err);
       agregarNotificacion("Ocurrió un error iniciando el pago.", "error");
     }
   };
 
+  /* ============================================================
+   * RENDER PRINCIPAL
+   * ============================================================ */
   return (
     <main className="min-h-[calc(100vh-120px)] bg-[#F9FAFB] py-12 px-6 flex flex-col items-center">
       <CheckoutProgress step={3} />
@@ -120,8 +179,8 @@ const PagoPage: React.FC = () => {
         <ResumenReserva
           espacioNombre={espacioNombre}
           dias={dias}
-          fechaInicio={fechaInicio!}
-          fechaFin={fechaFin!}
+          fechaInicio={fechaInicio}
+          fechaFin={fechaFin}
           cantidadPersonas={cantidadPersonas}
           monto={monto}
         />
@@ -165,20 +224,23 @@ const PagoPage: React.FC = () => {
             )}
           </button>
 
-          {mensaje && <p className="text-center text-sm text-red-500 mt-4">{mensaje}</p>}
         </motion.section>
       </div>
 
       {/* MODALES */}
       {modalVisible === "reglamento" && (
-        <ModalTerminosEnap tipo="reglamento" onClose={() => setModalVisible(null)} />
+        <ModalTerminosEnap
+          tipo="reglamento"
+          onClose={() => setModalVisible(null)}
+        />
       )}
 
       {modalVisible === "politicas" && (
-        <ModalTerminosEnap tipo="politicas" onClose={() => setModalVisible(null)} />
+        <ModalTerminosEnap
+          tipo="politicas"
+          onClose={() => setModalVisible(null)}
+        />
       )}
     </main>
   );
-};
-
-export default PagoPage;
+}
