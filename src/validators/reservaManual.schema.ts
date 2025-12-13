@@ -11,14 +11,12 @@ export const datosContactoSchema = z.object({
     .string()
     .email("Correo personal inválido")
     .optional()
-    .or(z.literal("").transform(() => undefined)),
+    .nullable()
+    .transform((v) => (v === "" ? undefined : v)),
 
   nombreResponsable: z.string().optional(),
   rutResponsable: z.string().optional(),
-
-  emailResponsable: z.string().email().optional(),
-
-
+  emailResponsable: z.string().email().optional().nullable(),
   telefonoResponsable: z.string().optional(),
 });
 
@@ -36,6 +34,12 @@ export const reservaManualSchema = z.object({
   marcarPagada: z.boolean().optional(),
 
   datosContacto: datosContactoSchema,
+
+  usoReserva: z.enum([
+    "USO_PERSONAL",
+    "CARGA_DIRECTA",
+    "TERCEROS",
+  ]),
 });
 
 export type ReservaManualPayload = z.infer<typeof reservaManualSchema>;

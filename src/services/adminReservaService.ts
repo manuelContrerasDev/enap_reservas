@@ -1,3 +1,4 @@
+// src/services/adminReservaService.ts
 import { api } from "@/lib/api";
 import { ApiResponse } from "@/types/api";
 import {
@@ -6,11 +7,13 @@ import {
 } from "@/types/reservaManualBackend";
 
 export const adminReservaService = {
+  /**
+   * Crear reserva manual (solo Admin)
+   */
   async crearManual(
     payload: ReservaManualBackendPayload
   ): Promise<ApiResponse<ReservaManualResult>> {
     try {
-      // 🔥 Tipamos la respuesta del backend aquí
       const res = await api.post<{ reserva: ReservaManualResult }>(
         "/admin/reservas/manual",
         payload
@@ -21,16 +24,23 @@ export const adminReservaService = {
         data: res.data.reserva,
       };
     } catch (err: any) {
+      console.error("❌ Error crearManual:", err);
+
       return {
         ok: false,
-        error: err.response?.data?.error ?? "Error desconocido",
+        error:
+          err?.response?.data?.error ??
+          err?.message ??
+          "Error desconocido al crear reserva",
       };
     }
   },
 
+  /**
+   * Listar reservas manuales (Admin)
+   */
   async listar(): Promise<ApiResponse<ReservaManualResult[]>> {
     try {
-      // 🔥 Tipamos la estructura exacta
       const res = await api.get<{ reservas: ReservaManualResult[] }>(
         "/admin/reservas"
       );
@@ -40,9 +50,14 @@ export const adminReservaService = {
         data: res.data.reservas,
       };
     } catch (err: any) {
+      console.error("❌ Error listar reservas admin:", err);
+
       return {
         ok: false,
-        error: err.response?.data?.error ?? "Error al cargar reservas",
+        error:
+          err?.response?.data?.error ??
+          err?.message ??
+          "Error al cargar reservas",
       };
     }
   },

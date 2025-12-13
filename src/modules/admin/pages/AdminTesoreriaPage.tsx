@@ -91,7 +91,7 @@ const TesoreriaPage: React.FC = () => {
           <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-[#002E3E]">
-                Tesorería — Pagos ENAP
+                Tesorería - Pagos ENAP
               </h1>
               <p className="text-sm text-gray-600">
                 Resumen de pagos realizados por socios y externos.

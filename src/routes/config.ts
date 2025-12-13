@@ -1,118 +1,42 @@
-// src/routes/config.ts
-import { PATHS } from "./paths";
-import {
-  MapPinned,
-  CalendarDays,
-  CalendarPlus,
-  ClipboardCheck,
-  Eye,
-  CreditCard,
-  RefreshCcw,
-  CheckCircle,
-  Calendar,
-  Building2,
-  DollarSign
-} from "lucide-react";
+export const PATHS = {
+  // 🔓 Auth
+  AUTH_LOGIN: "/auth/login",
+  AUTH_REGISTER: "/auth/register",
+  AUTH_CONFIRM: "/auth/confirm",
+  AUTH_EMAIL_SENT: "/auth/email-sent",
+  AUTH_LINK_EXPIRED: "/auth/link-expired",
+  AUTH_RESET_CONFIRM: "/auth/reset-confirm",
+  AUTH_RESET_REQUEST: "/auth/reset-request",
+  AUTH_ALREADY_CONFIRMED: "/auth/already-confirmed",
+  AUTH_RESEND_CONFIRMATION: "/auth/resend-confirmation",
 
-export type AppRole = "ADMIN" | "SOCIO" | "EXTERNO";
+  // 🏠 Bases
+  APP_HOME: "/app/home",
 
-export interface AppRoute {
-  path: string;
-  label: string;
-  icon?: React.ComponentType<any>; // ← FIX DEFINITIVO
-  roles?: AppRole[];
-  showInNav?: boolean;
-  section?: "SOCIO" | "ADMIN";
-}
+  // 👥 Usuario SOCIO / EXTERNO
+  SOCIO_HOME: "/app/espacios",
+  EXTERNO_HOME: "/app/espacios",
+  SOCIO_ESPACIOS: "/app/espacios",
+  SOCIO_ESPACIO_DETALLE: "/app/espacios/:id",
+  SOCIO_MIS_RESERVAS: "/app/mis-reservas",
 
-export const ROUTES: AppRoute[] = [
-  /* SOCIO */
-  {
-    path: PATHS.SOCIO_ESPACIOS,
-    label: "Espacios",
-    icon: MapPinned,
-    roles: ["SOCIO", "EXTERNO", "ADMIN"],
-    showInNav: true,
-    section: "SOCIO",
-  },
-  {
-    path: PATHS.SOCIO_MIS_RESERVAS,
-    label: "Mis Reservas",
-    icon: CalendarDays,
-    roles: ["SOCIO"],
-    showInNav: true,
-    section: "SOCIO",
-  },
+  // 📅 Reservas
+  RESERVA: "/app/reserva",
+  RESERVA_ID: "/app/reservar/:id",
+  RESERVA_PREVIEW: "/app/reserva/preview",
 
-  /* RESERVAS */
-  {
-    path: PATHS.RESERVA,
-    label: "Reservar",
-    icon: CalendarPlus,
-    roles: ["SOCIO", "EXTERNO", "ADMIN"],
-    showInNav: false,
-  },
-  {
-    path: PATHS.RESERVA_ID,
-    label: "Reserva Detalle",
-    icon: ClipboardCheck,
-    roles: ["SOCIO", "EXTERNO", "ADMIN"],
-    showInNav: false,
-  },
-  {
-    path: PATHS.RESERVA_PREVIEW,
-    label: "Vista Previa",
-    icon: Eye,
-    roles: ["SOCIO", "EXTERNO", "ADMIN"],
-    showInNav: false,
-  },
+  // 💳 Pagos
+  RESERVA_PAGO: "/app/pago",
+  PAGO_WEBPAY_RETORNO: "/app/pago/webpay/retorno",
+  PAGO_WEBPAY_FINAL: "/app/pago/webpay/final",
 
-  /* PAGOS */
-  {
-    path: PATHS.PAGO,
-    label: "Pago",
-    icon: CreditCard,
-    roles: ["SOCIO", "EXTERNO", "ADMIN"],
-    showInNav: false,
-  },
-  {
-    path: PATHS.PAGO_WEBPAY_RETORNO,
-    label: "Webpay Retorno",
-    icon: RefreshCcw,
-    roles: ["SOCIO", "EXTERNO", "ADMIN"],
-    showInNav: false,
-  },
-  {
-    path: PATHS.PAGO_WEBPAY_FINAL,
-    label: "Webpay Final",
-    icon: CheckCircle,
-    roles: ["SOCIO", "EXTERNO", "ADMIN"],
-    showInNav: false,
-  },
+  // 🧑‍💼 Admin
+  ADMIN_HOME: "/app/admin/reservas",
+  ADMIN_RESERVAS: "/app/admin/reservas",
+  ADMIN_RESERVAS_MANUAL: "/app/admin/reservas/crear-reserva",
+  ADMIN_ESPACIOS: "/app/admin/espacios",
+  TESORERIA: "/app/admin/tesoreria",
 
-  /* ADMIN */
-  {
-    path: PATHS.ADMIN,
-    label: "Reservas",
-    icon: Calendar,
-    roles: ["ADMIN"],
-    showInNav: true,
-    section: "ADMIN",
-  },
-  {
-    path: PATHS.ADMIN_ESPACIOS,
-    label: "Gestión de Espacios",
-    icon: Building2,
-    roles: ["ADMIN"],
-    showInNav: true,
-    section: "ADMIN",
-  },
-  {
-    path: PATHS.TESORERIA,
-    label: "Tesorería",
-    icon: DollarSign,
-    roles: ["ADMIN"],
-    showInNav: true,
-    section: "ADMIN",
-  },
-];
+  // 🔚 Default
+  NOT_FOUND: "*",
+} as const;

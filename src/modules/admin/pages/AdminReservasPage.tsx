@@ -1,9 +1,9 @@
 // src/pages/admin/AdminReservasPage.tsx
-import React from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import React, { useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
+import { useReducedMotion, motion } from "framer-motion";
+import { Plus } from "lucide-react";
 
 import { PATHS } from "@/routes/paths";
 import { useAuth } from "@/context/auth";
@@ -20,6 +20,9 @@ import ReservasPagination from "@/modules/admin/components/reservas/ReservasPagi
 
 import type { ReservaBackend } from "@/types/ReservaBackend";
 
+// UI Kit oficial
+import { Button, Panel, Divider, LoaderPage } from "@/components/ui";
+
 const ROWS_OPTIONS = [10, 15, 20, 50] as const;
 
 const AdminReservasPage: React.FC = () => {
@@ -29,21 +32,24 @@ const AdminReservasPage: React.FC = () => {
   const prefersReducedMotion = useReducedMotion();
   const fadeUp = useFadeUp(0.35);
 
-  // Solo admin
+  // Seguridad por rol
   if (role !== "ADMIN") return <Navigate to="/app" replace />;
 
-  // useHook nuevo
   const {
     reservas,
     loading,
     filtros,
     setFiltros,
-    reload,
     updateEstado,
     eliminarReserva,
   } = useReservasAdmin();
 
-  const kpis = useReservasKPIs(reservas as ReservaBackend[]);
+  const reservasTyped = useMemo(
+    () => (reservas ?? []) as ReservaBackend[],
+    [reservas]
+  );
+
+  const kpis = useReservasKPIs(reservasTyped);
 
   const {
     currentPage,
@@ -54,31 +60,32 @@ const AdminReservasPage: React.FC = () => {
     currentSlice,
     setCurrentPage,
     setRowsPerPage,
-  } = usePagination(reservas, ROWS_OPTIONS, 15);
+  } = usePagination(reservasTyped, ROWS_OPTIONS, 15);
 
-  /* ============================================================
-   * 🟦 Cambiar estado
-   * ============================================================ */
-  const handleEstadoChange = async (id: string, estado: any) => {
-    const res = await updateEstado(id, estado);
-    if (res.ok) agregarNotificacion("Estado actualizado", "success");
-    else agregarNotificacion("Error al actualizar estado", "error");
-  };
+  // Cambiar estado
+  const handleEstadoChange = useCallback(
+    async (id: string, estado: unknown) => {
+      const res = await updateEstado(id, estado as any);
+      if (res.ok) agregarNotificacion("Estado actualizado", "success");
+      else agregarNotificacion("Error al actualizar estado", "error");
+    },
+    [updateEstado, agregarNotificacion]
+  );
 
-  /* ============================================================
-   * 🟥 Eliminar
-   * ============================================================ */
-  const handleEliminar = async (id: string) => {
-    if (!confirm("¿Eliminar esta reserva?")) return;
+  // Eliminar
+  const handleEliminar = useCallback(
+    async (id: string) => {
+      if (!window.confirm("¿Eliminar esta reserva?")) return;
 
-    const res = await eliminarReserva(id);
-    if (res.ok) agregarNotificacion("Reserva eliminada", "success");
-    else agregarNotificacion("Error al eliminar reserva", "error");
-  };
+      const res = await eliminarReserva(id);
+      if (res.ok) agregarNotificacion("Reserva eliminada", "success");
+      else agregarNotificacion("Error al eliminar reserva", "error");
+    },
+    [eliminarReserva, agregarNotificacion]
+  );
 
-  /* ============================================================
-   * 🖥️ Render
-   * ============================================================ */
+  const empty = !loading && reservasTyped.length === 0;
+
   return (
     <>
       <Helmet>
@@ -87,68 +94,102 @@ const AdminReservasPage: React.FC = () => {
 
       <main className="min-h-[calc(100vh-120px)] bg-[#F9FAFB] px-6 py-10">
         {loading ? (
-          <div className="flex items-center justify-center py-24 text-[#002E3E]">
-            <Loader2 className="animate-spin" size={48} />
-          </div>
+          <LoaderPage />
         ) : (
-          <>
-
+          <div className="mx-auto w-full max-w-6xl space-y-6">
             {/* HEADER */}
-            <motion.header {...fadeUp} className="mb-10 flex items-center justify-between">
+            <motion.header
+              {...fadeUp}
+              className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div>
-                <h1 className="text-3xl font-bold text-[#002E3E]">Panel de Reservas</h1>
-                <p className="text-gray-600">Gestión completa de reservas.</p>
+                <h1 className="text-3xl font-bold text-enap-primary">
+                  Panel de Reservas
+                </h1>
+                <p className="text-gray-600">
+                  Gestión completa de reservas y control operativo.
+                </p>
               </div>
 
-              {/* BOTÓN CREAR RESERVA MANUAL */}
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45 }}
-              >
-                <a
-                  href={PATHS.ADMIN_RESERVAS_MANUAL}
-                  className="px-4 py-2 bg-[#007B91] hover:bg-[#005F73] text-white rounded-lg shadow-md 
-                            transition-all duration-200 font-semibold"
-                >
-                  + Crear Reserva Manual
-                </a>
-              </motion.div>
+              <Link to={PATHS.ADMIN_RESERVAS_MANUAL}>
+                <Button variant="secondary" className="w-full sm:w-auto">
+                  <Plus className="h-4 w-4" />
+                  Crear reserva manual
+                </Button>
+              </Link>
             </motion.header>
 
             {/* KPIs */}
-            <ReservasKPIs
-              kpis={kpis}
-              prefersReducedMotion={!!prefersReducedMotion}
-            />
+            <section aria-label="Indicadores">
+              <ReservasKPIs
+                kpis={kpis}
+                prefersReducedMotion={!!prefersReducedMotion}
+              />
+            </section>
 
-            {/* FILTROS */}
-            <ReservasFilters
-              filtros={filtros}
-              setFiltros={setFiltros}
-              espacios={espacios}
-            />
+            {/* FILTROS + TABLA */}
+            <Panel title="Reservas">
+              <section aria-label="Filtros de búsqueda">
+                <ReservasFilters
+                  filtros={filtros}
+                  setFiltros={setFiltros}
+                  espacios={espacios}
+                />
+              </section>
 
-            {/* TABLA */}
-            <ReservasTable
-              rows={currentSlice}
-              handleEliminar={handleEliminar}
-              handleEstadoChange={handleEstadoChange}
-              prefersReducedMotion={!!prefersReducedMotion}
-            />
+              <Divider />
 
-            {/* PAGINACIÓN */}
-            <ReservasPagination
-              reservas={reservas}
-              rowsPerPage={rowsPerPage}
-              setRowsPerPage={setRowsPerPage}
-              startIndex={startIndex}
-              endIndex={endIndex}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={setCurrentPage}
-            />
-          </>
+              {empty ? (
+                <div
+                  className="py-16 text-center"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <p className="text-base font-semibold text-gray-800">
+                    No hay reservas para mostrar
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Prueba ajustando los filtros o crea una reserva manual.
+                  </p>
+
+                  <div className="mt-6 flex justify-center">
+                    <Link to={PATHS.ADMIN_RESERVAS_MANUAL}>
+                      <Button>
+                        <Plus className="h-4 w-4" />
+                        Crear reserva manual
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <section aria-label="Tabla de reservas">
+                    <ReservasTable
+                      rows={currentSlice}
+                      handleEliminar={handleEliminar}
+                      handleEstadoChange={handleEstadoChange}
+                      prefersReducedMotion={!!prefersReducedMotion}
+                    />
+                  </section>
+
+                  <Divider />
+
+                  <section aria-label="Paginación">
+                    <ReservasPagination
+                      reservas={reservasTyped}
+                      rowsPerPage={rowsPerPage}
+                      setRowsPerPage={setRowsPerPage}
+                      startIndex={startIndex}
+                      endIndex={endIndex}
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      setCurrentPage={setCurrentPage}
+                    />
+                  </section>
+                </>
+              )}
+            </Panel>
+          </div>
         )}
       </main>
     </>

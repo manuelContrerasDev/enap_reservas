@@ -1,7 +1,7 @@
 // src/components/ui/LoaderTransition.tsx
 import React from "react";
 import { motion } from "framer-motion";
-import logoEnap from "../../assets/logo-enap.png";
+import logoEnap from "../../../assets/logo-enap.png";
 
 /**
  * LoaderTransition: solo el “contenido” del spinner.

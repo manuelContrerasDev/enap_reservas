@@ -2,9 +2,9 @@ import React, { ReactNode, useState, Suspense, useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
-import LoaderTransition from "../ui/LoaderTransition";
+import LoaderTransition from "../ui/loaders/LoaderTransition";
 import Footer from "../layout/Footer";
-import Sidebar from "@/components/layout/Sidebar";
+import Sidebar from "@/components/layout/sidebar";
 import { useAuth } from "@/context/auth";
 
 const LOADER_MIN_MS = 300;

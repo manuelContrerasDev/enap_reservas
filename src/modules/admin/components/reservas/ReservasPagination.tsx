@@ -3,7 +3,25 @@
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const ReservasPagination = ({
+// UI BASE
+import EnapPanel from "@/components/ui/base/Panel";
+import EnapSelect from "@/components/ui/base/Select";
+import EnapButton from "@/components/ui/base/Button";
+
+interface Props {
+  reservas: unknown[];
+  rowsPerPage: number;
+  setRowsPerPage: (value: number) => void;
+  startIndex: number;
+  endIndex: number;
+  currentPage: number;
+  totalPages: number;
+  setCurrentPage: (updater: (p: number) => number) => void;
+}
+
+const ROWS_OPTIONS = [10, 15, 20, 50];
+
+const ReservasPagination: React.FC<Props> = ({
   reservas,
   rowsPerPage,
   setRowsPerPage,
@@ -12,66 +30,92 @@ const ReservasPagination = ({
   currentPage,
   totalPages,
   setCurrentPage,
-}: any) => {
+}) => {
   const realEnd = Math.min(endIndex, reservas.length);
 
   return (
-    <div className="border-t bg-gray-50 px-6 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <section aria-label="Paginación de reservas">
+      <EnapPanel className="mt-6 py-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
-      {/* Left side */}
-      <div className="flex items-center gap-3 text-sm text-gray-600">
-        <span>
-          Mostrando{" "}
-          {reservas.length === 0 ? 0 : startIndex + 1}–{realEnd} de{" "}
-          {reservas.length}
-        </span>
+          {/* INFO */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-gray-600">
+            <span>
+              Mostrando{" "}
+              <strong>
+                {reservas.length === 0 ? 0 : startIndex + 1}–{realEnd}
+              </strong>{" "}
+              de <strong>{reservas.length}</strong>
+            </span>
 
-        <div className="flex items-center gap-2">
-          <span>Filas por página:</span>
+            {/* FILAS POR PÁGINA */}
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="rowsPerPage"
+                className="text-sm font-medium text-gray-700"
+              >
+                Filas por página
+              </label>
 
-          <select
-            className="rounded border px-2 py-1 text-xs"
-            value={rowsPerPage}
-            onChange={(e) => setRowsPerPage(Number(e.target.value))}
-          >
-            {[10, 15, 20, 50].map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+              <EnapSelect
+                id="rowsPerPage"
+                name="rowsPerPage"
+                value={rowsPerPage}
+                onChange={(e) =>
+                  setRowsPerPage(Number(e.target.value))
+                }
+                className="min-w-[72px]"
+              >
+                {ROWS_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </EnapSelect>
+            </div>
+          </div>
+
+          {/* NAV */}
+          <div className="flex items-center gap-2 justify-end">
+            <EnapButton
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setCurrentPage((p) => Math.max(1, p - 1))
+              }
+              disabled={currentPage === 1}
+              aria-label="Página anterior"
+            >
+              <ChevronLeft size={16} />
+              Anterior
+            </EnapButton>
+
+            <span className="px-2 text-sm text-gray-700">
+              Página{" "}
+              <strong>
+                {totalPages === 0 ? 0 : currentPage}
+              </strong>{" "}
+              de <strong>{totalPages}</strong>
+            </span>
+
+            <EnapButton
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setCurrentPage((p) =>
+                  Math.min(totalPages, p + 1)
+                )
+              }
+              disabled={currentPage === totalPages || totalPages === 0}
+              aria-label="Página siguiente"
+            >
+              Siguiente
+              <ChevronRight size={16} />
+            </EnapButton>
+          </div>
         </div>
-      </div>
-
-      {/* Right side: navigation */}
-      <div className="flex items-center gap-3 justify-end">
-        <button
-          onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))}
-          disabled={currentPage === 1}
-          className="inline-flex items-center gap-1 rounded px-3 py-1 text-sm 
-            text-[#002E3E] disabled:text-gray-400 hover:bg-gray-100"
-        >
-          <ChevronLeft size={16} />
-          Anterior
-        </button>
-
-        <span className="px-2 text-sm">
-          Página {totalPages === 0 ? 0 : currentPage} de {totalPages}
-        </span>
-
-        <button
-          onClick={() =>
-            setCurrentPage((p: number) => Math.min(totalPages, p + 1))
-          }
-          disabled={currentPage === totalPages || totalPages === 0}
-          className="inline-flex items-center gap-1 rounded px-3 py-1 text-sm 
-            text-[#002E3E] disabled:text-gray-400 hover:bg-gray-100"
-        >
-          Siguiente
-          <ChevronRight size={16} />
-        </button>
-      </div>
-    </div>
+      </EnapPanel>
+    </section>
   );
 };
 

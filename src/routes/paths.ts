@@ -46,11 +46,10 @@ export const PATHS = {
   /* =========================================================================
    * 🧑‍💼 ADMINISTRACIÓN
   ========================================================================= */
-  ADMIN: "/app/admin/reservas",
   ADMIN_ESPACIOS: "/app/admin/espacios",
-  TESORERIA: "/app/admin/tesoreria",
   ADMIN_RESERVAS: "/app/admin/reservas",   //  LISTADO PRINCIPAL
-  ADMIN_RESERVAS_MANUAL: "/app/admin/reservas/manual", //CREACION MANUAL
+  ADMIN_RESERVAS_MANUAL: "/app/admin/reservas/crear-reserva", //CREACION MANUAL
+  TESORERIA: "/app/admin/tesoreria",
 
   /* =========================================================================
    * 🧹 DEFAULT

@@ -1,77 +1,172 @@
-import React from "react";
-import { useReservaManual } from "@/modules/admin/reservas/hooks/useReservaManual";
-import { useNotificacion } from "@/context/NotificacionContext";
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+// ============================================================
+// AdminReservaManualPage.tsx — Crear Reserva Manual (2 Steps)
+// ============================================================
 
-import ReservaManualForm from "@/modules/admin/reservas/ReservaManualForm";
-import type { ReservaManualBackendPayload } from "@/types/reservaManualBackend";
+import React, { useState } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+// UI
+import { Stepper } from "@/modules/admin/reservas/components/Stepper";
+import { AdminStep1_DatosSocioEspacio } from "@/modules/admin/reservas/components/AdminStep1_DatosSocioEspacio";
+import { AdminStep2_CantidadesResumen } from "@/modules/admin/reservas/components/AdminStep2_CantidadesResumen";
+import { AdminReservaSuccess } from "@/modules/admin/reservas/components/AdminReservaSuccess";
+
+// Validaciones y tipos
+import {
+  reservaManualSchema,
+  type ReservaManualPayload,
+} from "@/validators/reservaManual.schema";
+import type { Resolver } from "react-hook-form";
+
+
+// Backend hook
+import { useReservaManual } from "@/modules/admin/reservas/hooks/useReservaManual";
 
 const AdminReservaManualPage: React.FC = () => {
-  const { crear, loading, resultado } = useReservaManual();
-  const { agregarNotificacion } = useNotificacion();
-  const navigate = useNavigate();
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const { crear, resultado, loading } = useReservaManual();
 
-  const handleSubmit = async (formData: ReservaManualBackendPayload) => {
-    const res = await crear(formData);
+  // ============================================================
+  // FORM — Tipado fuerte + resolver Zod
+  // ============================================================
 
-    if (res.ok) {
-      agregarNotificacion("Reserva creada exitosamente", "success");
+  
+  const form = useForm<ReservaManualPayload>({
+resolver: zodResolver(reservaManualSchema) as Resolver<ReservaManualPayload>,
+    defaultValues: {
+      userId: "",
+      espacioId: "",
+      fechaInicio: "",
+      fechaFin: "",
+      cantidadAdultos: 1,
+      cantidadNinos: 0,
+      cantidadPiscina: 0,
+      marcarPagada: false,
+      datosContacto: {
+        nombre: "",
+        rut: "",
+        telefono: "",
+        correoEnap: "",
+        correoPersonal: "",
+        nombreResponsable: "",
+        rutResponsable: "",
+        emailResponsable: "",
+        telefonoResponsable: "",
+      },
+    },
+  });
 
-      setTimeout(() => {
-        navigate("/app/admin/reservas", { replace: true });
-      }, 1200);
-    } else {
-      agregarNotificacion(res.error ?? "Error creando reserva", "error");
+  const {
+    register,
+    watch,
+    setValue,
+    handleSubmit,
+    trigger,
+    formState: { errors },
+  } = form;
+
+  // ============================================================
+  // STEP NAVIGATION
+  // ============================================================
+  const next = async () => {
+    const valid = await trigger([
+      "userId",
+      "datosContacto",
+      "espacioId",
+      "fechaInicio",
+      "fechaFin",
+    ]);
+
+    if (valid) {
+      setStep(2);
+      window.scrollTo(0, 0);
     }
   };
 
+  const back = () => {
+    setStep(1);
+    window.scrollTo(0, 0);
+  };
+
+  // ============================================================
+  // SUBMIT — Crear reserva manual
+  // ============================================================
+  const onSubmit: SubmitHandler<ReservaManualPayload> = async (data) => {
+    await crear(data);
+    setStep(3);
+    window.scrollTo(0, 0);
+  };
+
+  const createReserva = handleSubmit(onSubmit);
+
+  // ============================================================
+  // SUCCESS
+  // ============================================================
+  if (step === 3 && resultado) {
+    return <AdminReservaSuccess id={resultado.id} />;
+  }
+
+  // ============================================================
+  // RENDER
+  // ============================================================
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: .45 }}
-      className="p-8 max-w-5xl mx-auto"
-    >
-      <h1 className="text-3xl font-bold text-[#00394F] mb-2">
-        Crear Reserva Manual
-      </h1>
-      <p className="text-sm text-gray-600 mb-6">
-        Uso exclusivo para administración (reservas especiales, migraciones, adultos mayores, etc.)
-      </p>
+    <div className="p-8 max-w-5xl mx-auto">
+      <Stepper step={step} />
 
-      <ReservaManualForm onSubmit={handleSubmit} loading={loading} />
+      <form onSubmit={createReserva} className="space-y-8">
+        {step === 1 && (
+          <AdminStep1_DatosSocioEspacio
+            register={register}
+            watch={watch}
+            errors={errors}
+            setValue={setValue}
+          />
+        )}
 
-      {resultado && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="mt-8 border border-gray-200 rounded-xl bg-white shadow-sm p-6"
-        >
-          <h2 className="text-lg font-bold text-[#00394F] mb-3">
-            Reserva creada correctamente ✔
-          </h2>
+        {step === 2 && (
+          <AdminStep2_CantidadesResumen
+            register={register}
+            watch={watch}
+            errors={errors}
+          />
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <p><strong>ID:</strong> {resultado.id}</p>
-            <p><strong>Usuario:</strong> {resultado.user.email}</p>
-            <p><strong>Espacio:</strong> {resultado.espacio.nombre}</p>
-            <p><strong>Fechas:</strong> {resultado.fechaInicio} → {resultado.fechaFin}</p>
-            <p><strong>Estado:</strong> {resultado.estado}</p>
-            <p><strong>Total:</strong> {resultado.totalClp.toLocaleString("es-CL")}</p>
-          </div>
-
-          <div className="mt-6 flex justify-end">
+        {/* FOOTER BOTONES */}
+        <div className="flex justify-between pt-6 border-t border-gray-200 mt-8">
+          
+          {step === 2 && (
             <button
-              onClick={() => navigate("/app/admin/reservas")}
-              className="px-4 py-2 bg-[#007B91] hover:bg-[#005F73] text-white rounded-lg shadow-md transition-all"
+              type="button"
+              onClick={back}
+              className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
             >
-              Volver al Panel de Reservas
+              Volver
             </button>
-          </div>
-        </motion.div>
-      )}
-    </motion.div>
+          )}
+
+          {step === 1 && (
+            <button
+              type="button"
+              onClick={next}
+              className="ml-auto px-6 py-2.5 bg-[#007B91] text-white font-medium rounded-lg shadow hover:bg-[#006272] transition-all"
+            >
+              Siguiente
+            </button>
+          )}
+
+          {step === 2 && (
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-8 py-2.5 bg-[#00394F] text-white font-medium rounded-lg shadow hover:bg-[#002a3a] disabled:opacity-60 transition-all flex items-center gap-2"
+            >
+              {loading ? "Guardando..." : "Confirmar Reserva"}
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
   );
 };
 

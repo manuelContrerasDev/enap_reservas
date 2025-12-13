@@ -26,8 +26,7 @@ import TesoreriaPage from "@/modules/admin/pages/AdminTesoreriaPage";
 import AdminReservasPage from "@/modules/admin/pages/AdminReservasPage";
 import AdminReservaManualPage from "@/modules/admin/pages/AdminReservaManualPage";
 
-
-// AUTH extra
+// AUTH extras
 import {
   SuccessRegisterPage,
   LinkExpiredPage,
@@ -41,7 +40,7 @@ import {
 
 import { PATHS } from "@/routes/paths";
 import { ReservaProvider } from "@/context/ReservaContext";
-import LoaderScreen from "@/components/ui/LoaderScreen";
+import LoaderScreen from "@/components/ui/loaders/LoaderScreen";
 
 
 // ============================================================
@@ -55,7 +54,6 @@ const ProtectedRoute: React.FC = () => {
 
   return <Outlet />;
 };
-
 
 // ============================================================
 // 👤 REDIRECT POR ROL
@@ -77,9 +75,8 @@ const RoleRedirect: React.FC = () => {
   }
 };
 
-
 // ============================================================
-// 🚀 APP ROUTER
+// 🚀 APP ROUTER — VERSIÓN SINCRONIZADA CON TU PATHS
 // ============================================================
 export default function App() {
   return (
@@ -97,21 +94,18 @@ export default function App() {
       <Route path={PATHS.AUTH_RESET_CONFIRM} element={<ResetConfirmPage />} />
 
 
-      {/* ZONA PROTEGIDA */}
+      {/* 🔐 ZONA PROTEGIDA */}
       <Route path="/app" element={<ProtectedRoute />}>
         <Route element={<LayoutBase />}>
 
-          {/* HOME dinámico (index) */}
+          {/* INDEX HOME POR ROL */}
           <Route index element={<RoleRedirect />} />
 
-          {/* ❌ Eliminado: AppShell */}
-          {/* <Route path="home" element={<AppShell />} /> */}
-
           {/* SOCIO / EXTERNO */}
-          <Route path="espacios" element={<EspaciosPage />} />
-          <Route path="mis-reservas" element={<MisReservasPage />} />
+          <Route path={PATHS.SOCIO_ESPACIOS.replace("/app/", "")} element={<EspaciosPage />} />
+          <Route path={PATHS.SOCIO_MIS_RESERVAS.replace("/app/", "")} element={<MisReservasPage />} />
 
-          {/* RESERVAS (con provider) */}
+          {/* RESERVAS (usa provider) */}
           <Route
             element={
               <ReservaProvider>
@@ -119,27 +113,23 @@ export default function App() {
               </ReservaProvider>
             }
           >
-            <Route path="reservar/:id" element={<ReservaPage />} />
-            <Route path="reserva/preview" element={<ReservaPreviewPage />} />
+            <Route path={PATHS.RESERVA_ID.replace("/app/", "")} element={<ReservaPage />} />
+            <Route path={PATHS.RESERVA_PREVIEW.replace("/app/", "")} element={<ReservaPreviewPage />} />
           </Route>
 
           {/* PAGOS */}
-          <Route path="pago" element={<PagoPage />} />
-          <Route path="pago/webpay/retorno" element={<PagoResultadoPage />} />
-          <Route path="pago/webpay/final" element={<PagoResultadoPage />} />
+          <Route path={PATHS.RESERVA_PAGO.replace("/app/", "")} element={<PagoPage />} />
+          <Route path={PATHS.PAGO_WEBPAY_RETORNO.replace("/app/", "")} element={<PagoResultadoPage />} />
+          <Route path={PATHS.PAGO_WEBPAY_FINAL.replace("/app/", "")} element={<PagoResultadoPage />} />
 
           {/* ADMIN */}
-          <Route path="admin/reservas" element={<AdminReservasPage />} />
-          <Route path="admin/espacios" element={<AdminEspaciosPage />} />
-          <Route path="admin/tesoreria" element={<TesoreriaPage />} />
-          <Route path="admin/reservas/manual" element={<AdminReservaManualPage />}/>
-
-          {/* TEST */}
-          <Route path="test" element={<div>TEST OK ✔</div>} />
+          <Route path={PATHS.ADMIN_RESERVAS.replace("/app/", "")} element={<AdminReservasPage />} />
+          <Route path={PATHS.ADMIN_RESERVAS_MANUAL.replace("/app/", "")} element={<AdminReservaManualPage />} />
+          <Route path={PATHS.ADMIN_ESPACIOS.replace("/app/", "")} element={<AdminEspaciosPage />} />
+          <Route path={PATHS.TESORERIA.replace("/app/", "")} element={<TesoreriaPage />} />
 
         </Route>
       </Route>
-
 
       {/* ROOT */}
       <Route path="/" element={<Navigate to={PATHS.AUTH_LOGIN} replace />} />
