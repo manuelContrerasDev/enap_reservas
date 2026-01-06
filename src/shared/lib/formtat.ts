@@ -1,0 +1,2 @@
+// Placeholder — formatters globales
+export {};
