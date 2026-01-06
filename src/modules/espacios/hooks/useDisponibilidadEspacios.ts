@@ -1,25 +1,34 @@
 // src/modules/espacios/hooks/useDisponibilidadEspacios.ts
 import { useCallback, useEffect, useState } from "react";
 import { fechaLocal } from "@/utils/fechaLocal";
-import type { Espacio } from "@/context/EspaciosContext";
+import type { EspacioDTO } from "@/types/espacios";
 
-export type BloqueFecha = { fechaInicio: string; fechaFin: string };
+/* ============================================================
+ * Tipos
+ * ============================================================ */
+export type BloqueFecha = {
+  fechaInicio: string;
+  fechaFin: string;
+};
 
 interface UseDisponibilidadOptions {
-  espacios: Espacio[];
+  espacios: EspacioDTO[];
   loadingEspacios: boolean;
   obtenerDisponibilidad: (espacioId: string) => Promise<BloqueFecha[]>;
 }
 
 /* ============================================================
- * Normalización segura de fechas (SET LOCAL MIDNIGHT)
+ * Normalización segura de fechas (LOCAL MIDNIGHT)
  * ============================================================ */
 const normalizarFecha = (iso: string): Date => {
-  const d = fechaLocal(iso); // helper local
+  const d = fechaLocal(iso);
   d.setHours(0, 0, 0, 0);
   return d;
 };
 
+/* ============================================================
+ * Hook
+ * ============================================================ */
 export function useDisponibilidadEspacios({
   espacios,
   loadingEspacios,
@@ -34,9 +43,9 @@ export function useDisponibilidadEspacios({
     Record<string, BloqueFecha[]>
   >({});
 
-  /* ============================================================
+  /* ----------------------------------------------------------
    * Reset completo
-   * ============================================================ */
+   * ---------------------------------------------------------- */
   const limpiarDisponibilidad = useCallback(() => {
     setFechaFiltro(null);
     setSoloDisponibles(false);
@@ -44,9 +53,9 @@ export function useDisponibilidadEspacios({
     setLoadingDisponibilidad(false);
   }, []);
 
-  /* ============================================================
+  /* ----------------------------------------------------------
    * Cargar disponibilidad de TODOS los espacios
-   * ============================================================ */
+   * ---------------------------------------------------------- */
   const cargarDisponibilidad = useCallback(
     async (fechaISO: string | null) => {
       if (!fechaISO || espacios.length === 0) return;
@@ -79,9 +88,9 @@ export function useDisponibilidadEspacios({
     [espacios, obtenerDisponibilidad]
   );
 
-  /* ============================================================
-   * Cambio de fecha OR cargado inicial
-   * ============================================================ */
+  /* ----------------------------------------------------------
+   * Cambio de fecha
+   * ---------------------------------------------------------- */
   const handleFechaChange = useCallback(
     async (fechaISO: string | null) => {
       setFechaFiltro(fechaISO);
@@ -94,9 +103,9 @@ export function useDisponibilidadEspacios({
     [cargarDisponibilidad]
   );
 
-  /* ============================================================
+  /* ----------------------------------------------------------
    * Re-cargar si cambian los espacios
-   * ============================================================ */
+   * ---------------------------------------------------------- */
   useEffect(() => {
     if (fechaFiltro && !loadingEspacios && espacios.length > 0) {
       if (Object.keys(disponibilidadMap).length === 0) {
@@ -111,9 +120,9 @@ export function useDisponibilidadEspacios({
     cargarDisponibilidad,
   ]);
 
-  /* ============================================================
-   * Validación: ¿espacio está ocupado en esa fecha?
-   * ============================================================ */
+  /* ----------------------------------------------------------
+   * ¿Espacio ocupado en esa fecha?
+   * ---------------------------------------------------------- */
   const estaOcupadoEnFecha = useCallback(
     (espacioId: string, fechaISO: string | null) => {
       if (!fechaISO) return false;
@@ -127,17 +136,16 @@ export function useDisponibilidadEspacios({
         const inicio = normalizarFecha(b.fechaInicio);
         const fin = normalizarFecha(b.fechaFin);
 
-        // ⭐ REGLA CORRECTA → intervalo [inicio, fin)
+        // Regla correcta → intervalo [inicio, fin)
         return target >= inicio && target < fin;
       });
     },
     [disponibilidadMap]
   );
 
-  /* ============================================================
-   * ⭐ NUEVO: Contador global por fecha
-   * Para marcar el calendario (verde/amarillo/rojo)
-   * ============================================================ */
+  /* ----------------------------------------------------------
+   * Contador global por fecha (calendario)
+   * ---------------------------------------------------------- */
   const contarOcupadosEnFecha = useCallback(
     (fechaISO: string) => {
       return espacios.filter((esp) =>
@@ -159,7 +167,7 @@ export function useDisponibilidadEspacios({
     estaOcupadoEnFecha,
     limpiarDisponibilidad,
 
-    // ⭐ NUEVO
+    // métricas
     contarOcupadosEnFecha,
   };
 }

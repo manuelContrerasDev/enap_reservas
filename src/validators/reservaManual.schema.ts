@@ -1,45 +1,79 @@
 import { z } from "zod";
 
-export const datosContactoSchema = z.object({
-  nombre: z.string().min(1, "Nombre del socio es requerido"),
-  rut: z.string().min(1, "RUT del socio es requerido"),
-  telefono: z.string().min(1, "Teléfono es requerido"),
-
+/* ===================== SOCIO ===================== */
+const socioSchema = z.object({
+  nombre: z.string().min(1, "Nombre requerido"),
+  rut: z.string().min(1, "RUT requerido"),
+  telefono: z.string().min(1, "Teléfono requerido"),
   correoEnap: z.string().email("Correo ENAP inválido"),
-
   correoPersonal: z
     .string()
     .email("Correo personal inválido")
-    .optional()
     .nullable()
-    .transform((v) => (v === "" ? undefined : v)),
-
-  nombreResponsable: z.string().optional(),
-  rutResponsable: z.string().optional(),
-  emailResponsable: z.string().email().optional().nullable(),
-  telefonoResponsable: z.string().optional(),
+    .optional()
+    .transform((v) => (v === "" ? null : v)),
 });
 
-export const reservaManualSchema = z.object({
-  userId: z.string().min(1, "ID de usuario requerido"),
-  espacioId: z.string().min(1, "Debe seleccionar un espacio"),
-
-  fechaInicio: z.string().min(1, "Fecha de inicio requerida"),
-  fechaFin: z.string().min(1, "Fecha de término requerida"),
-
-  cantidadAdultos: z.coerce.number().int().min(1, "Al menos 1 adulto"),
-  cantidadNinos: z.coerce.number().int().min(0),
-  cantidadPiscina: z.coerce.number().int().min(0),
-
-  marcarPagada: z.boolean().optional(),
-
-  datosContacto: datosContactoSchema,
-
-  usoReserva: z.enum([
-    "USO_PERSONAL",
-    "CARGA_DIRECTA",
-    "TERCEROS",
-  ]),
+/* ================= RESPONSABLE =================== */
+const responsableSchema = z.object({
+  nombre: z.string().min(1, "Nombre requerido"),
+  rut: z.string().min(1, "RUT requerido"),
+  email: z.string().email("Email inválido").optional(),
+  telefono: z.string().optional(),
 });
 
-export type ReservaManualPayload = z.infer<typeof reservaManualSchema>;
+/* ================= RESERVA FORM ================== */
+export const reservaManualFormSchema = z
+  .object({
+    userId: z.string().uuid("ID usuario inválido"),
+    creadaPor: z.string().uuid("ID admin inválido"),
+    espacioId: z.string().uuid("ID espacio inválido"),
+
+    fechaInicio: z.string().min(1, "Fecha inicio requerida"),
+    fechaFin: z.string().min(1, "Fecha fin requerida"),
+
+    cantidadAdultos: z.coerce.number().int().min(1, "Mínimo 1 adulto"),
+    cantidadNinos: z.coerce.number().int().min(0),
+    cantidadPiscina: z.coerce.number().int().min(0),
+
+    usoReserva: z.enum(["USO_PERSONAL", "CARGA_DIRECTA", "TERCEROS"]),
+    marcarPagada: z.boolean().optional(),
+
+    // ✅ regla real
+    socioPresente: z.boolean(),
+
+    socio: socioSchema,
+    responsable: responsableSchema.nullable().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // ✅ Responsable SOLO si el titular NO asiste
+    if (data.socioPresente === false) {
+      if (!data.responsable) {
+        ctx.addIssue({
+          path: ["responsable"],
+          code: z.ZodIssueCode.custom,
+          message: "Responsable requerido si el titular no asistirá",
+        });
+      }
+      // mínimo razonable
+      if (data.responsable && (!data.responsable.nombre || !data.responsable.rut)) {
+        ctx.addIssue({
+          path: ["responsable"],
+          code: z.ZodIssueCode.custom,
+          message: "Responsable debe tener nombre y RUT",
+        });
+      }
+    } else {
+      // si asiste, responsable debe ser null
+      if (data.responsable) {
+        ctx.addIssue({
+          path: ["responsable"],
+          code: z.ZodIssueCode.custom,
+          message: "No debe haber responsable si el titular asistirá",
+        });
+      }
+    }
+  });
+
+export type ReservaManualFormValues = z.input<typeof reservaManualFormSchema>;
+export type ReservaManualFormParsed = z.output<typeof reservaManualFormSchema>;

@@ -1,5 +1,5 @@
 // ============================================================
-// DatosSocioForm.tsx — UX/UI Premium ENAP 2025 (VERSIÓN FINAL SINCRONIZADA)
+// DatosSocioForm.tsx — ENAP 2025 (Auditado y sincronizado)
 // ============================================================
 
 import React from "react";
@@ -25,14 +25,11 @@ const DatosSocioForm: React.FC<Props> = ({
   errors,
   setValue,
 }) => {
-  const nombreSocio = watch("nombreSocio") ?? "";
-  const rutSocio = watch("rutSocio") ?? "";
-  const telefonoSocio = watch("telefonoSocio") ?? "";
-  const correoEnap = watch("correoEnap") ?? "";
-  const correoPersonal = watch("correoPersonal") ?? "";
-
   const update = (field: keyof ReservaFrontendType, value: string) => {
-    setValue(field, value, { shouldDirty: true, shouldValidate: true });
+    setValue(field, value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   return (
@@ -52,9 +49,9 @@ const DatosSocioForm: React.FC<Props> = ({
           type="text"
           autoComplete="name"
           placeholder="Ej: Felipe Contreras Soto"
-          {...register("nombreSocio")}
-          value={nombreSocio}
-          onChange={(e) => update("nombreSocio", e.target.value)}
+          {...register("nombreSocio", {
+            onChange: (e) => update("nombreSocio", e.target.value),
+          })}
           className="
             rounded-lg border px-4 py-3 text-sm shadow-sm
             focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
@@ -62,7 +59,9 @@ const DatosSocioForm: React.FC<Props> = ({
         />
 
         {errors.nombreSocio && (
-          <span className="text-xs text-red-600">{errors.nombreSocio.message}</span>
+          <span className="text-xs text-red-600">
+            {errors.nombreSocio.message}
+          </span>
         )}
       </div>
 
@@ -79,9 +78,9 @@ const DatosSocioForm: React.FC<Props> = ({
             type="text"
             autoComplete="off"
             placeholder="12.345.678-9"
-            {...register("rutSocio")}
-            value={rutSocio}
-            onChange={(e) => update("rutSocio", e.target.value)}
+            {...register("rutSocio", {
+              onChange: (e) => update("rutSocio", e.target.value),
+            })}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
               focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
@@ -89,13 +88,18 @@ const DatosSocioForm: React.FC<Props> = ({
           />
 
           {errors.rutSocio && (
-            <span className="text-xs text-red-600">{errors.rutSocio.message}</span>
+            <span className="text-xs text-red-600">
+              {errors.rutSocio.message}
+            </span>
           )}
         </div>
 
         {/* Teléfono */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="telefonoSocio" className="text-sm font-medium text-gray-700">
+          <label
+            htmlFor="telefonoSocio"
+            className="text-sm font-medium text-gray-700"
+          >
             Teléfono
           </label>
 
@@ -104,9 +108,9 @@ const DatosSocioForm: React.FC<Props> = ({
             type="tel"
             autoComplete="tel"
             placeholder="Ej: +56 9 8765 4321"
-            {...register("telefonoSocio")}
-            value={telefonoSocio}
-            onChange={(e) => update("telefonoSocio", e.target.value)}
+            {...register("telefonoSocio", {
+              onChange: (e) => update("telefonoSocio", e.target.value),
+            })}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
               focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
@@ -114,7 +118,9 @@ const DatosSocioForm: React.FC<Props> = ({
           />
 
           {errors.telefonoSocio && (
-            <span className="text-xs text-red-600">{errors.telefonoSocio.message}</span>
+            <span className="text-xs text-red-600">
+              {errors.telefonoSocio.message}
+            </span>
           )}
         </div>
       </div>
@@ -132,9 +138,9 @@ const DatosSocioForm: React.FC<Props> = ({
             type="email"
             autoComplete="email"
             placeholder="usuario@enap.cl"
-            {...register("correoEnap")}
-            value={correoEnap}
-            onChange={(e) => update("correoEnap", e.target.value)}
+            {...register("correoEnap", {
+              onChange: (e) => update("correoEnap", e.target.value),
+            })}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
               focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
@@ -142,7 +148,9 @@ const DatosSocioForm: React.FC<Props> = ({
           />
 
           {errors.correoEnap && (
-            <span className="text-xs text-red-600">{errors.correoEnap.message}</span>
+            <span className="text-xs text-red-600">
+              {errors.correoEnap.message}
+            </span>
           )}
         </div>
 
@@ -158,11 +166,11 @@ const DatosSocioForm: React.FC<Props> = ({
           <input
             id="correoPersonal"
             type="email"
-            autoComplete="personal-email"
+            autoComplete="email"
             placeholder="ej: felipe.c@gmail.com"
-            {...register("correoPersonal")}
-            value={correoPersonal}
-            onChange={(e) => update("correoPersonal", e.target.value)}
+            {...register("correoPersonal", {
+              onChange: (e) => update("correoPersonal", e.target.value),
+            })}
             className="
               rounded-lg border px-4 py-3 text-sm shadow-sm
               focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan

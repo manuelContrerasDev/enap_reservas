@@ -1,20 +1,18 @@
-// src/pages/admin/AdminEspaciosPage.tsx
 import React, { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Trash2, Edit, PlusCircle, Filter } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import { Navigate } from "react-router-dom";
 
 import { useEspacios } from "@/context/EspaciosContext";
 import { useAuth } from "@/context/auth";
-import { Navigate } from "react-router-dom";
 import { PATHS } from "@/routes/paths";
-
 
 import ModalNuevoEspacio from "@/modules/reservas/components/modals/ModalNuevoEspacio";
 import ModalEditarEspacio from "@/modules/reservas/components/modals/ModalEditarEspacio";
-import ModalConfirmarEliminar from "@/modules/reservas/components/modals/ModalConfirmarEliminar";
+import ModalConfirmarEliminar from "@/modules/admin/reservas/components/modals/ModalConfirmarEliminar";
 
-import type { Espacio } from "@/context/EspaciosContext";
+import type { EspacioDTO } from "@/types/espacios";
 
 type FiltroEstado = "TODOS" | "ACTIVOS" | "INACTIVOS";
 
@@ -25,16 +23,19 @@ const AdminEspaciosPage: React.FC = () => {
   // MODALES
   const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
   const [modalEditarAbierto, setModalEditarAbierto] = useState(false);
+  const [confirmarEliminarAbierto, setConfirmarEliminarAbierto] =
+    useState(false);
 
-  const [confirmarEliminarAbierto, setConfirmarEliminarAbierto] = useState(false);
-  const [espacioAEliminar, setEspacioAEliminar] = useState<Espacio | null>(null);
+  const [espacioSeleccionado, setEspacioSeleccionado] =
+    useState<EspacioDTO | null>(null);
 
+  const [espacioAEliminar, setEspacioAEliminar] =
+    useState<EspacioDTO | null>(null);
 
-  const [espacioSeleccionado, setEspacioSeleccionado] = useState<Espacio | null>(null);
+  const [filtroEstado, setFiltroEstado] =
+    useState<FiltroEstado>("TODOS");
 
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("TODOS");
-
-  // ⛔️ FIX: no retornamos hooks condicionales
+  // Espera auth
   if (!role) {
     return (
       <div className="text-center py-20">
@@ -43,19 +44,24 @@ const AdminEspaciosPage: React.FC = () => {
     );
   }
 
-  const noEsAdmin = role !== "ADMIN";
-
-  // ⚠️ IMPORTANTE: Hooks ya fueron ejecutados ANTES del return.
-  if (noEsAdmin) {
+  if (role !== "ADMIN") {
     return <Navigate to={PATHS.AUTH_LOGIN} replace />;
   }
 
+  /* ============================================================
+   * Filtro por estado
+   * ============================================================ */
   const espaciosFiltrados = useMemo(() => {
-    if (filtroEstado === "ACTIVOS") return espacios.filter((e) => e.activo);
-    if (filtroEstado === "INACTIVOS") return espacios.filter((e) => !e.activo);
+    if (filtroEstado === "ACTIVOS")
+      return espacios.filter((e) => e.activo);
+    if (filtroEstado === "INACTIVOS")
+      return espacios.filter((e) => !e.activo);
     return espacios;
   }, [espacios, filtroEstado]);
 
+  /* ============================================================
+   * Toggle activo
+   * ============================================================ */
   const handleToggle = useCallback(
     (id: string) => {
       toggleActivo(id);
@@ -63,20 +69,9 @@ const AdminEspaciosPage: React.FC = () => {
     [toggleActivo]
   );
 
-  const confirmarEliminar = async (id: string) => {
-  const seguro = window.confirm(
-      "¿Estás seguro de eliminar este espacio? Esta acción NO se puede deshacer."
-    );
-
-    if (!seguro) return;
-
-    const ok = await eliminarEspacio(id);
-
-    if (!ok) {
-      alert("❌ No se pudo eliminar el espacio.");
-    }
-  };
-
+  /* ============================================================
+   * Eliminar confirmado
+   * ============================================================ */
   const ejecutarEliminacion = async () => {
     if (!espacioAEliminar) return;
 
@@ -90,7 +85,6 @@ const AdminEspaciosPage: React.FC = () => {
     }
   };
 
-
   return (
     <>
       <Helmet>
@@ -98,12 +92,13 @@ const AdminEspaciosPage: React.FC = () => {
       </Helmet>
 
       <main className="max-w-7xl mx-auto px-6 py-10 bg-gray-50 rounded-lg">
-
         {/* LOADING */}
         {loading && (
           <div className="flex flex-col items-center justify-center min-h-[40vh] text-[#002E3E]">
             <Loader2 className="animate-spin" size={48} />
-            <p className="mt-2 text-gray-600 text-sm">Cargando espacios...</p>
+            <p className="mt-2 text-gray-600 text-sm">
+              Cargando espacios...
+            </p>
           </div>
         )}
 
@@ -130,7 +125,11 @@ const AdminEspaciosPage: React.FC = () => {
                   <Filter size={16} className="text-gray-500" />
                   <select
                     value={filtroEstado}
-                    onChange={(e) => setFiltroEstado(e.target.value as FiltroEstado)}
+                    onChange={(e) =>
+                      setFiltroEstado(
+                        e.target.value as FiltroEstado
+                      )
+                    }
                     className="text-sm text-gray-700 bg-transparent focus:outline-none"
                   >
                     <option value="TODOS">Todos</option>
@@ -159,12 +158,24 @@ const AdminEspaciosPage: React.FC = () => {
                   <table className="w-full border-collapse text-sm sm:text-base">
                     <thead className="bg-gray-100 text-gray-700 uppercase text-xs font-semibold border-b">
                       <tr>
-                        <th className="px-6 py-3 text-left">Nombre</th>
-                        <th className="px-6 py-3 text-left">Tipo</th>
-                        <th className="px-6 py-3 text-left">Tarifa (Socio)</th>
-                        <th className="px-6 py-3 text-left">Capacidad</th>
-                        <th className="px-6 py-3 text-left">Estado</th>
-                        <th className="px-6 py-3 text-left">Acciones</th>
+                        <th className="px-6 py-3 text-left">
+                          Nombre
+                        </th>
+                        <th className="px-6 py-3 text-left">
+                          Tipo
+                        </th>
+                        <th className="px-6 py-3 text-left">
+                          Tarifa Socio
+                        </th>
+                        <th className="px-6 py-3 text-left">
+                          Capacidad
+                        </th>
+                        <th className="px-6 py-3 text-left">
+                          Estado
+                        </th>
+                        <th className="px-6 py-3 text-left">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
 
@@ -180,28 +191,38 @@ const AdminEspaciosPage: React.FC = () => {
                             transition={{ duration: 0.15 }}
                             className="hover:bg-gray-50"
                           >
-                            <td className="px-6 py-3 font-medium">{e.nombre}</td>
-                            <td className="px-6 py-3 text-gray-600">{e.tipo}</td>
+                            <td className="px-6 py-3 font-medium">
+                              {e.nombre}
+                            </td>
+                            <td className="px-6 py-3 text-gray-600">
+                              {e.tipo}
+                            </td>
 
                             <td className="px-6 py-3 text-gray-800">
-                              ${e.tarifaClp.toLocaleString("es-CL")}
+                              $
+                              {e.precioBaseSocio.toLocaleString(
+                                "es-CL"
+                              )}
                             </td>
 
                             <td className="px-6 py-3 text-gray-600">
                               {e.capacidad}
-                              {e.capacidadExtra ? ` (+${e.capacidadExtra})` : ""}
                             </td>
 
                             <td className="px-6 py-3">
                               <button
-                                onClick={() => handleToggle(e.id)}
+                                onClick={() =>
+                                  handleToggle(e.id)
+                                }
                                 className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
                                   e.activo
                                     ? "bg-green-100 text-green-700 hover:bg-green-200"
                                     : "bg-red-100 text-red-700 hover:bg-red-200"
                                 }`}
                               >
-                                {e.activo ? "Activo" : "Inactivo"}
+                                {e.activo
+                                  ? "Activo"
+                                  : "Inactivo"}
                               </button>
                             </td>
 
@@ -215,11 +236,13 @@ const AdminEspaciosPage: React.FC = () => {
                               >
                                 <Edit size={18} />
                               </button>
-                                
+
                               <button
                                 onClick={() => {
                                   setEspacioAEliminar(e);
-                                  setConfirmarEliminarAbierto(true);
+                                  setConfirmarEliminarAbierto(
+                                    true
+                                  );
                                 }}
                                 className="text-red-600 hover:text-red-800"
                               >
@@ -238,24 +261,28 @@ const AdminEspaciosPage: React.FC = () => {
         )}
 
         {/* MODALES */}
-        <ModalNuevoEspacio abierto={modalNuevoAbierto} onCerrar={() => setModalNuevoAbierto(false)} />
-        <ModalEditarEspacio 
-          abierto={modalEditarAbierto} 
+        <ModalNuevoEspacio
+          abierto={modalNuevoAbierto}
+          onCerrar={() => setModalNuevoAbierto(false)}
+        />
+
+        <ModalEditarEspacio
+          abierto={modalEditarAbierto}
+          espacio={espacioSeleccionado}
           onCerrar={() => {
             setModalEditarAbierto(false);
             setEspacioSeleccionado(null);
-          }} 
-          espacio={espacioSeleccionado}
+          }}
         />
 
         <ModalConfirmarEliminar
           abierto={confirmarEliminarAbierto}
+          nombre={espacioAEliminar?.nombre}
           onCerrar={() => {
             setConfirmarEliminarAbierto(false);
             setEspacioAEliminar(null);
           }}
           onConfirmar={ejecutarEliminacion}
-          nombre={espacioAEliminar?.nombre}
         />
       </main>
     </>

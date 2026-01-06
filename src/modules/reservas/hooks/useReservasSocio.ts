@@ -1,7 +1,9 @@
+// src/modules/reservas/hooks/useReservasSocio.ts
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth";
 import { normalizarReserva } from "@/utils/normalizarReserva";
-import type { ReservaFrontend } from "@/types/ReservaBackend";
+import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaDTO } from "@/types/ReservaDTO";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -17,25 +19,26 @@ export function useReservasSocio() {
     try {
       setLoading(true);
 
+      // ✅ tu backend tiene /api/reservas/mias
       const resp = await fetch(`${API_URL}/api/reservas/mias`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      const data = await resp.json();
+      const json = await resp.json();
 
-      if (!resp.ok || data.ok === false) {
-        console.error("Error cargando reservas del socio:", data);
+      // ✅ contrato típico: { ok: true, data: [...] } o { ok: true, reservas: [...] }
+      const list: ReservaDTO[] = (json?.data ?? json?.reservas ?? []) as ReservaDTO[];
+
+      if (!resp.ok || json?.ok === false) {
+        console.error("Error cargando reservas:", json);
         setReservas([]);
         return;
       }
 
-      const normalizadas = data.reservas.map(normalizarReserva);
-
-      setReservas(normalizadas);
+      setReservas(list.map(normalizarReserva));
     } catch (err) {
       console.error("Error:", err);
+      setReservas([]);
     } finally {
       setLoading(false);
     }
@@ -45,9 +48,5 @@ export function useReservasSocio() {
     cargar();
   }, [cargar]);
 
-  return {
-    reservas,
-    loading,
-    reload: cargar,
-  };
+  return { reservas, loading, reload: cargar };
 }

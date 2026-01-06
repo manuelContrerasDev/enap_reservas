@@ -58,10 +58,24 @@ export type ResetRequestSchemaType = z.infer<typeof resetRequestSchema>;
 /* ============================================================
  * RESET PASSWORD — CONFIRM
  * ============================================================*/
-export const resetPasswordSchema = z.object({
-  token: z.string().min(10, "Token inválido"),
-  newPassword: z
-    .string()
-    .min(6, "La contraseña debe tener al menos 6 caracteres"),
-});
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(10, "Token inválido"),
+
+    newPassword: z
+      .string()
+      .min(8, "La contraseña debe tener al menos 8 caracteres")
+      .max(100, "La contraseña es demasiado larga"),
+
+    confirmPassword: z
+      .string()
+      .min(6, "Debes confirmar la contraseña"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Las contraseñas no coinciden",
+  });
+
+
+
 export type ResetPasswordSchemaType = z.infer<typeof resetPasswordSchema>;

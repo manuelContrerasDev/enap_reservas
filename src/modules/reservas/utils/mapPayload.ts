@@ -1,52 +1,52 @@
-// src/modules/reservas/utils/mapPayload.ts
-import type { ReservaFrontendType } from "@/validators/reserva.schema";
-import type { Espacio } from "@/context/EspaciosContext";
 import type { CrearReservaPayload } from "@/context/ReservaContext";
+import type { ReservaFrontendParsed } from "@/validators/reserva.schema";
+import { UsoReserva } from "@/types/enums";
 
+/**
+ * Mapper oficial ENAP 2025
+ * Frontend (DATA PARSEADA por Zod) → Payload Backend
+ * ✅ NO contiene reglas de negocio
+ */
 export function mapCrearReservaPayload(
-  data: ReservaFrontendType,
-  espacio: Espacio
+  data: ReservaFrontendParsed,
+  espacioId: string
 ): CrearReservaPayload {
   return {
-    espacioId: espacio.id,
+    espacioId,
 
+    // Fechas
     fechaInicio: data.fechaInicio,
     fechaFin: data.fechaFin,
 
+    // Socio (snapshot)
     nombreSocio: data.nombreSocio,
     rutSocio: data.rutSocio,
     telefonoSocio: data.telefonoSocio,
     correoEnap: data.correoEnap,
+    correoPersonal: data.correoPersonal ?? undefined,
 
-    correoPersonal:
-      data.correoPersonal && data.correoPersonal.trim() !== ""
-        ? data.correoPersonal.trim()
-        : undefined,
-
-    usoReserva: data.usoReserva,
+    // Uso (CAST CONTROLADO)
+    usoReserva: data.usoReserva as UsoReserva,
     socioPresente: data.socioPresente,
 
-    nombreResponsable: data.socioPresente
-      ? undefined
-      : data.nombreResponsable || undefined,
+    // Responsable (ya normalizado por Zod)
+    nombreResponsable: data.nombreResponsable ?? undefined,
+    rutResponsable: data.rutResponsable ?? undefined,
+    emailResponsable: data.emailResponsable ?? undefined,
 
-    rutResponsable: data.socioPresente
-      ? undefined
-      : data.rutResponsable || undefined,
-
-    emailResponsable: data.socioPresente
-      ? undefined
-      : data.emailResponsable || undefined,
-
+    // Cantidades
     cantidadPersonas: data.cantidadPersonas,
-    cantidadPersonasPiscina: data.cantidadPersonasPiscina ?? 0,
+    cantidadPersonasPiscina: data.cantidadPersonasPiscina,
 
-    terminosAceptados: data.terminosAceptados === true,
+    // Términos
+    terminosAceptados: data.terminosAceptados,
 
-    invitados: data.invitados?.map((i) => ({
+    // Invitados (array SIEMPRE definido)
+    invitados: data.invitados.map((i) => ({
       nombre: i.nombre,
       rut: i.rut,
       edad: i.edad,
+      esPiscina: i.esPiscina,
     })),
   };
 }

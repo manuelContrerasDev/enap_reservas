@@ -1,12 +1,20 @@
 // src/modules/reservas/utils/calcularCapacidad.ts
-import type { Espacio } from "@/context/EspaciosContext";
+// ============================================================
+// Cálculo de capacidad máxima — ENAP 2025
+// Fuente de verdad: EspacioDTO
+// ============================================================
 
-export function calcularCapacidad(espacio: Espacio | null): number {
+import type { EspacioDTO } from "@/types/espacios";
+
+/**
+ * Retorna la capacidad máxima permitida para el espacio.
+ * ❗ NO inventa reglas
+ * ❗ NO usa campos inexistentes
+ */
+export function calcularCapacidad(
+  espacio: EspacioDTO | null
+): number {
   if (!espacio) return 1;
 
-  if (espacio.tipo === "PISCINA") {
-    return espacio.capacidad ?? 100;
-  }
-
-  return (espacio.capacidad ?? 1) + (espacio.capacidadExtra ?? 0);
+  return espacio.capacidad;
 }

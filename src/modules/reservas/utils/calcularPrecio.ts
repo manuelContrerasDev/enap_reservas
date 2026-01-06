@@ -1,8 +1,25 @@
-// src/modules/reservas/utils/calcularPrecio.ts
+// ============================================================
+// calcularPrecio.ts — Motor de cálculo Frontend ENAP (FINAL)
+// ============================================================
+
 import { parseYmdLocal } from "@/lib";
-import { calcularTotalReservaFrontend } from "@/utils/calcularTotalReservaFrontend";
-import type { Espacio } from "@/context/EspaciosContext";
-import type { ReservaFrontendType } from "@/validators/reserva.schema";
+import type { EspacioDTO } from "@/types/espacios";
+import { UsoReserva } from "@/types/enums";
+
+/* ============================================================
+ * Input exclusivo para cálculo (YA NORMALIZADO)
+ * ============================================================ */
+export interface ReservaCalculoInput {
+  usoReserva: UsoReserva;
+  cantidadPersonas: number;
+  cantidadPersonasPiscina: number;
+  invitados: {
+    nombre: string;
+    rut: string;
+    edad?: number;
+    esPiscina: boolean; // ✅ obligatorio
+  }[];
+}
 
 export interface TotalesReserva {
   dias: number;
@@ -12,31 +29,24 @@ export interface TotalesReserva {
   total: number;
 }
 
+/* ============================================================
+ * Motor de cálculo
+ * ============================================================ */
 export function calcularTotalesReserva({
   espacio,
   fechaInicio,
   fechaFin,
   data,
 }: {
-  espacio: Espacio | null;
-  fechaInicio?: string | null;
-  fechaFin?: string | null;
-  data: ReservaFrontendType;
+  espacio: EspacioDTO;
+  fechaInicio: string;
+  fechaFin: string;
+  data: ReservaCalculoInput;
 }): TotalesReserva {
-  if (!espacio || !fechaInicio || !fechaFin) {
-    return {
-      dias: 0,
-      valorEspacio: 0,
-      pagoPersonas: 0,
-      pagoPiscina: 0,
-      total: 0,
-    };
-  }
-
   const ini = parseYmdLocal(fechaInicio);
   const fin = parseYmdLocal(fechaFin);
 
-  if (!ini || !fin || !(ini instanceof Date) || !(fin instanceof Date)) {
+  if (!ini || !fin || fin <= ini) {
     return {
       dias: 0,
       valorEspacio: 0,
@@ -46,48 +56,61 @@ export function calcularTotalesReserva({
     };
   }
 
-  if (fin <= ini) {
-    return {
-      dias: 0,
-      valorEspacio: 0,
-      pagoPersonas: 0,
-      pagoPiscina: 0,
-      total: 0,
-    };
+  const dias = Math.ceil(
+    (fin.getTime() - ini.getTime()) / 86_400_000
+  );
+
+  const esSocio =
+    data.usoReserva === UsoReserva.USO_PERSONAL ||
+    data.usoReserva === UsoReserva.CARGA_DIRECTA;
+
+  /* =========================
+   * ESPACIO
+   * ========================= */
+  let valorEspacio = 0;
+
+  if (espacio.modalidadCobro !== "POR_PERSONA") {
+    const base = esSocio
+      ? espacio.precioBaseSocio
+      : espacio.precioBaseExterno;
+
+    valorEspacio = base * dias;
   }
 
-  const diffMs = fin.getTime() - ini.getTime();
-  const dias = Math.ceil(diffMs / 86400000);
-  if (dias <= 0) {
-    return {
-      dias: 0,
-      valorEspacio: 0,
-      pagoPersonas: 0,
-      pagoPiscina: 0,
-      total: 0,
-    };
-  }
+  /* =========================
+   * PERSONAS
+   * ========================= */
+  const tarifaPersona = esSocio
+    ? espacio.precioPersonaAdicionalSocio
+    : espacio.precioPersonaAdicionalExterno;
 
-  const { total, base, totalInvitados, totalPiscina } =
-    calcularTotalReservaFrontend({
-      espacio: {
-        tipo: espacio.tipo as any,
-        tarifaClp: espacio.tarifaClp,
-        tarifaExterno: espacio.tarifaExterno,
-      },
-      dias,
-      data: {
-        usoReserva: data.usoReserva,
-        invitados: data.invitados ?? [],
-        cantidadPersonasPiscina: data.cantidadPersonasPiscina ?? 0,
-      },
-    });
+  const pagoPersonas = data.cantidadPersonas * tarifaPersona;
+
+  /* =========================
+   * PISCINA
+   * ========================= */
+  const tarifaPiscina = esSocio
+    ? espacio.precioPiscinaSocio
+    : espacio.precioPiscinaExterno;
+
+  const personasPiscina = data.invitados.filter(
+    (i) => i.esPiscina === true
+  ).length;
+
+  const pagoPiscina = esSocio
+    ? Math.max(personasPiscina - 5, 0) * tarifaPiscina
+    : personasPiscina * tarifaPiscina;
+
+  /* =========================
+   * TOTAL
+   * ========================= */
+  const total = valorEspacio + pagoPersonas + pagoPiscina;
 
   return {
     dias,
-    valorEspacio: base,
-    pagoPersonas: totalInvitados,
-    pagoPiscina: totalPiscina,
+    valorEspacio,
+    pagoPersonas,
+    pagoPiscina,
     total,
   };
 }

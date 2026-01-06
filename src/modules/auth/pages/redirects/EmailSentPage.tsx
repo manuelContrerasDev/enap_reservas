@@ -1,6 +1,5 @@
 // src/pages/auth/EmailSentPage.tsx
 
-import React from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -11,18 +10,24 @@ import AuthButton from "@/modules/auth/components/AuthButton";
 import { PATHS } from "@/routes/paths";
 import heroCabana from "@/assets/enap-login.png";
 
+type EmailType = "register" | "reset";
+
 export default function EmailSentPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  const type = params.get("type") || "register";
+  const rawType = params.get("type");
+  const type: EmailType = rawType === "reset" ? "reset" : "register";
+
+  const title =
+    type === "reset" ? "Correo de recuperación enviado" : "Correo de confirmación enviado";
 
   const message =
     type === "reset"
       ? "Te enviamos un enlace para restablecer tu contraseña."
-      : "Te enviamos un enlace de confirmación a tu correo.";
+      : "Te enviamos un enlace para confirmar tu cuenta.";
 
-  const subtitle =
+  const description =
     type === "reset"
       ? "Revisa tu bandeja de entrada para continuar con el proceso de recuperación."
       : "Revisa tu correo para completar la activación de tu cuenta.";
@@ -35,7 +40,7 @@ export default function EmailSentPage() {
         transition={{ duration: 0.45 }}
         className="space-y-8"
       >
-        <AuthHeader title="Correo enviado" subtitle={message} />
+        <AuthHeader title={title} subtitle={message} />
 
         <div className="space-y-6 text-center max-w-md mx-auto">
           <motion.p
@@ -43,23 +48,22 @@ export default function EmailSentPage() {
             animate={{ opacity: 1 }}
             className="text-gray-700 text-sm leading-relaxed"
           >
-            {subtitle}
+            {description}
             <br />
-            Si no lo encuentras, revisa también la carpeta de spam.
+            Si no lo encuentras, revisa también la carpeta de spam o correo no deseado.
           </motion.p>
 
           <div className="space-y-3">
-            <AuthButton onClick={() => navigate(PATHS.AUTH_LOGIN)}>
+            <AuthButton onClick={() => navigate(PATHS.AUTH_LOGIN, { replace: true })}>
               Volver al inicio de sesión
             </AuthButton>
 
-            {/* 🔥 Solo mostrar si es confirmación, no reset */}
             {type === "register" && (
               <button
                 onClick={() => navigate(PATHS.AUTH_RESEND_CONFIRMATION)}
-                className="w-full text-azul-700 text-sm underline hover:text-azul-600 transition"
+                className="w-full text-[#003D52] text-sm underline hover:text-[#002a3b] transition"
               >
-                ¿No recibiste el correo? Reenviar enlace
+                ¿No recibiste el correo? Reenviar confirmación
               </button>
             )}
           </div>

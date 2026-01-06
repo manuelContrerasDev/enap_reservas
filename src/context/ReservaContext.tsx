@@ -14,11 +14,11 @@ import { useAuth } from "@/context/auth";
 import { api } from "@/lib/axios";
 
 import { normalizarReserva } from "@/utils/normalizarReserva";
-import type { ReservaFrontend } from "@/types/ReservaBackend";
-import type { ReservaEstado } from "@/types/enums";
+import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import { ReservaEstado, UsoReserva } from "@/types/enums";
 
 /* ============================================================
- * 🟦 ReservaDraft — Estado temporal durante el formulario
+ * 🟦 ReservaDraft — Estado temporal durante el wizard
  * ============================================================ */
 export type ReservaDraft = Partial<ReservaFrontend> & {
   espacioId?: string;
@@ -31,26 +31,23 @@ export type ReservaDraft = Partial<ReservaFrontend> & {
 };
 
 /* ============================================================
- * Payload creación
+ * Payload creación — SYNC 1:1 con backend (crearReservaSchema)
  * ============================================================ */
-// ============================================================
-// Payload creación (SYNC con backend/baseReservaSchema)
-// ============================================================
 export interface CrearReservaPayload {
   espacioId: string;
 
   fechaInicio: string;
   fechaFin: string;
 
-  /* -------- DATOS SOCIO -------- */
+  /* -------- DATOS SOCIO (snapshot) -------- */
   nombreSocio: string;
   rutSocio: string;
   telefonoSocio: string;
   correoEnap: string;
-  correoPersonal?: string; // 👈 sin null
+  correoPersonal?: string;
 
   /* -------- USO RESERVA -------- */
-  usoReserva: "USO_PERSONAL" | "CARGA_DIRECTA" | "TERCEROS";
+  usoReserva: UsoReserva;
   socioPresente: boolean;
 
   /* -------- RESPONSABLE -------- */
@@ -60,7 +57,7 @@ export interface CrearReservaPayload {
 
   /* -------- CANTIDADES -------- */
   cantidadPersonas: number;
-  cantidadPersonasPiscina?: number;
+  cantidadPersonasPiscina: number;
 
   /* -------- TÉRMINOS -------- */
   terminosAceptados: boolean;
@@ -73,9 +70,8 @@ export interface CrearReservaPayload {
   }[];
 }
 
-
 /* ============================================================
- * Query params
+ * Query params (ADMIN / filtros)
  * ============================================================ */
 export interface ReservasQueryParams {
   estado?: ReservaEstado | "TODOS";
@@ -90,7 +86,7 @@ export interface ReservasQueryParams {
 }
 
 /* ============================================================
- * Contexto
+ * Context type
  * ============================================================ */
 interface ReservaContextType {
   reservas: ReservaFrontend[];
@@ -126,46 +122,47 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
   const [reservas, setReservas] = useState<ReservaFrontend[]>([]);
   const [meta, setMeta] = useState<ReservaContextType["meta"]>(null);
 
-  const [reservaActual, setReservaActualState] = useState<ReservaDraft | null>(
-    null
-  );
+  const [reservaActual, setReservaActualState] =
+    useState<ReservaDraft | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* ============================================================
-   * Limpieza automática de errores
-   * ============================================================ */
+  /* ------------------------------------------------------------
+   * Auto-clear errores
+   * ------------------------------------------------------------ */
   useEffect(() => {
     if (!error) return;
     const id = setTimeout(() => setError(null), 2500);
     return () => clearTimeout(id);
   }, [error]);
 
-  /* ============================================================
-   * Setter inteligente para reservaActual (wizard)
-   * ============================================================ */
+  /* ------------------------------------------------------------
+   * Setter acumulativo para wizard
+   * ------------------------------------------------------------ */
   const setReservaActual = useCallback((partial: ReservaDraft | null) => {
-    if (!partial) return setReservaActualState(null);
+    if (!partial) {
+      setReservaActualState(null);
+      return;
+    }
     setReservaActualState((prev) => ({ ...prev, ...partial }));
   }, []);
 
-  /* ============================================================
-   * Cargar reservas (ADMIN paginado / SOCIO-EXTERNO simple)
-   * ============================================================ */
+  /* ------------------------------------------------------------
+   * Cargar reservas
+   * ------------------------------------------------------------ */
   const cargarReservas = useCallback(
     async (params?: ReservasQueryParams) => {
       if (!isAuthenticated) return;
 
       setLoading(true);
       try {
-        /* ---------------- ADMIN ---------------- */
+        // ---------------- ADMIN ----------------
         if (isAdmin) {
           const q: Record<string, any> = {};
 
           if (params?.estado && params.estado !== "TODOS")
             q.estado = params.estado;
-
           if (params?.espacioId) q.espacioId = params.espacioId;
           if (params?.socioId) q.socioId = params.socioId;
           if (params?.fechaInicio) q.fechaInicio = params.fechaInicio;
@@ -180,9 +177,7 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
             ok: boolean;
             data: any[];
             meta: ReservaContextType["meta"];
-          }>("/reservas/admin", {
-            params: q,
-          });
+          }>("/reservas", { params: q });
 
           if (!resp.data.ok) {
             throw new Error("Error cargando reservas");
@@ -192,10 +187,10 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
           setReservas(resp.data.data.map(normalizarReserva));
         }
 
-        /* ---------------- SOCIO / EXTERNO ---------------- */
+        // ---------------- SOCIO / EXTERNO ----------------
         else {
           const resp = await api.get<{ ok: boolean; reservas: any[] }>(
-            "/reservas/mias"
+            "/reservas/mis-reservas"
           );
 
           if (!resp.data.ok) {
@@ -224,9 +219,9 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
     [isAdmin, isAuthenticated]
   );
 
-  /* ============================================================
-   * Crear Reserva
-   * ============================================================ */
+  /* ------------------------------------------------------------
+   * Crear reserva
+   * ------------------------------------------------------------ */
   const crearReservaEnServidor = useCallback(
     async (payload: CrearReservaPayload): Promise<string | null> => {
       if (!isAuthenticated) {
@@ -246,10 +241,9 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
           throw new Error(resp.data.error || "Error creando reserva");
         }
 
-        const id: string | undefined = resp.data.data?.id;
+        const id = resp.data.data?.id;
         if (!id) throw new Error("Respuesta inválida del servidor");
 
-        // recargamos reservas del usuario (o admin)
         await cargarReservas();
         return id;
       } catch (err: any) {
@@ -263,9 +257,9 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
     [isAuthenticated, cargarReservas]
   );
 
-  /* ============================================================
+  /* ------------------------------------------------------------
    * ADMIN — Actualizar estado
-   * ============================================================ */
+   * ------------------------------------------------------------ */
   const actualizarEstado = useCallback(
     async (id: string, estado: ReservaEstado) => {
       if (!isAuthenticated) {
@@ -298,9 +292,9 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
     [isAuthenticated]
   );
 
-  /* ============================================================
-   * ADMIN — Eliminar
-   * ============================================================ */
+  /* ------------------------------------------------------------
+   * ADMIN — Eliminar reserva
+   * ------------------------------------------------------------ */
   const eliminarReserva = useCallback(
     async (id: string) => {
       if (!isAuthenticated) {
@@ -327,9 +321,9 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
     [isAuthenticated]
   );
 
-  /* ============================================================
-   * VALUE
-   * ============================================================ */
+  /* ------------------------------------------------------------
+   * Value
+   * ------------------------------------------------------------ */
   const value = useMemo(
     () => ({
       reservas,
@@ -371,6 +365,8 @@ export const ReservaProvider = ({ children }: { children: ReactNode }) => {
  * ============================================================ */
 export const useReserva = () => {
   const ctx = useContext(ReservaContext);
-  if (!ctx) throw new Error("useReserva debe usarse dentro de ReservaProvider");
+  if (!ctx) {
+    throw new Error("useReserva debe usarse dentro de ReservaProvider");
+  }
   return ctx;
 };

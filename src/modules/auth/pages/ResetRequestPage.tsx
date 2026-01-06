@@ -1,9 +1,9 @@
 // src/pages/auth/ResetRequestPage.tsx
 
-import React from "react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate } from "react-router-dom";
 
 import {
   resetRequestSchema,
@@ -16,7 +16,6 @@ import AuthInput from "@/modules/auth/components/AuthInput";
 import AuthButton from "@/modules/auth/components/AuthButton";
 
 import { useNotificacion } from "@/context/NotificacionContext";
-import { useNavigate } from "react-router-dom";
 import { PATHS } from "@/routes/paths";
 
 import heroCabana from "@/assets/enap-login.png";
@@ -48,27 +47,23 @@ export default function ResetRequestPage() {
         body: JSON.stringify(data),
       });
 
-      const json = await res.json().catch(() => ({}));
-
-      if (!res.ok || !json.ok) {
-        agregarNotificacion(
-          json.message || "No se pudo enviar el correo.",
-          "error"
-        );
+      if (!res.ok) {
+        agregarNotificacion("No se pudo enviar el correo.", "error");
         return;
       }
 
-      // Mensaje consistente
+      // ✅ Mensaje neutro SIEMPRE
       agregarNotificacion(
-        "Si el correo existe, enviaremos un enlace.",
+        "Si el correo existe, enviaremos un enlace para restablecer tu contraseña.",
         "success"
       );
 
       navigate(`${PATHS.AUTH_EMAIL_SENT}?type=reset`, {
         replace: true,
       });
-    } catch (err) {
-      console.error("❌ ResetRequest error:", err);
+
+    } catch (error) {
+      console.error("❌ ResetRequest error:", error);
       agregarNotificacion("Error de conexión con el servidor.", "error");
     }
   };
@@ -81,25 +76,18 @@ export default function ResetRequestPage() {
         transition={{ duration: 0.45, ease: "easeOut" }}
         className="w-full max-w-md space-y-8"
       >
-        {/* HEADER */}
         <AuthHeader
           title="Recuperar Contraseña"
           subtitle="Ingresa tu correo para recibir las instrucciones."
         />
 
-        {/* VOLVER */}
         <button
           onClick={() => navigate(PATHS.AUTH_LOGIN)}
-          className="
-            text-sm font-medium
-            text-[#003D52] hover:text-[#002a3b]
-            transition-colors
-          "
+          className="text-sm font-medium text-[#003D52] hover:text-[#002a3b]"
         >
           ← Volver al inicio de sesión
         </button>
 
-        {/* FORM */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <AuthInput
             label="Correo electrónico"

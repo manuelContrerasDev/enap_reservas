@@ -14,7 +14,7 @@ import heroCabana from "@/assets/enap-login.png";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-type Status = "loading" | "success" | "error";
+type Status = "loading" | "success";
 
 export default function ConfirmEmailPage() {
   const [params] = useSearchParams();
@@ -27,25 +27,23 @@ export default function ConfirmEmailPage() {
   const hasRun = useRef(false);
 
   useEffect(() => {
-    const token = params.get("token");
-
     if (hasRun.current) return;
     hasRun.current = true;
 
-    const confirm = async () => {
-      if (!token) {
-        const msg = "Token no encontrado.";
-        setStatus("error");
-        setMessage(msg);
-        agregarNotificacion(msg, "error");
-        return;
-      }
+    const token = params.get("token");
 
+    if (!token) {
+      navigate(PATHS.AUTH_LINK_EXPIRED, { replace: true });
+      return;
+    }
+
+    const confirm = async () => {
       try {
         const res = await fetch(`${API_URL}/api/auth/confirm?token=${token}`);
         const json = await res.json().catch(() => ({}));
 
-        if (json.code === "CONFIRMED") {
+        // ✅ Confirmado correctamente
+        if (json.ok) {
           const msg = json.message || "Correo confirmado correctamente 🎉";
           setStatus("success");
           setMessage(msg);
@@ -53,23 +51,20 @@ export default function ConfirmEmailPage() {
           return;
         }
 
+        // 🔁 Ya confirmado
         if (json.code === "ALREADY_CONFIRMED") {
           navigate(PATHS.AUTH_ALREADY_CONFIRMED, { replace: true });
           return;
         }
 
-        if (json.code === "INVALID" || json.code === "EXPIRED") {
-          navigate(PATHS.AUTH_LINK_EXPIRED, { replace: true });
-          return;
-        }
-
+        // ⛔ Token inválido / expirado
         navigate(PATHS.AUTH_LINK_EXPIRED, { replace: true });
 
       } catch {
-        const msg = "Error de conexión con el servidor.";
-        setStatus("error");
-        setMessage(msg);
-        agregarNotificacion(msg, "error");
+        agregarNotificacion(
+          "Error de conexión con el servidor.",
+          "error"
+        );
       }
     };
 
@@ -86,34 +81,34 @@ export default function ConfirmEmailPage() {
       >
         <AuthHeader
           title="Confirmación de Cuenta"
-          subtitle={status === "loading" ? "Validando tu información…" : "Resultado"}
+          subtitle={
+            status === "loading"
+              ? "Validando tu información…"
+              : "Cuenta confirmada"
+          }
         />
 
-        <div className="text-center space-y-6">
-          {status === "loading" && (
-            <p className="text-gray-700 text-sm">Procesando solicitud…</p>
-          )}
+        {status === "loading" && (
+          <p className="text-gray-700 text-sm text-center">
+            Procesando solicitud…
+          </p>
+        )}
 
-          {status === "success" && (
-            <div className="space-y-6">
-              <p className="text-[#003D52] font-semibold text-lg">✔ {message}</p>
+        {status === "success" && (
+          <div className="space-y-6 text-center">
+            <p className="text-[#003D52] font-semibold text-lg">
+              ✔ {message}
+            </p>
 
-              <AuthButton onClick={() => navigate(PATHS.AUTH_LOGIN, { replace: true })}>
-                Iniciar sesión
-              </AuthButton>
-            </div>
-          )}
-
-          {status === "error" && (
-            <div className="space-y-6">
-              <p className="text-red-600 font-semibold text-lg">✖ {message}</p>
-
-              <AuthButton onClick={() => navigate(PATHS.AUTH_LOGIN, { replace: true })}>
-                Volver al inicio
-              </AuthButton>
-            </div>
-          )}
-        </div>
+            <AuthButton
+              onClick={() =>
+                navigate(PATHS.AUTH_LOGIN, { replace: true })
+              }
+            >
+              Iniciar sesión
+            </AuthButton>
+          </div>
+        )}
       </motion.div>
     </AuthBGLayout>
   );

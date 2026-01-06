@@ -1,4 +1,3 @@
-export { default as SuccessRegisterPage } from "./SuccessRegisterPage";
 export { default as LinkExpiredPage } from "./LinkExpiredPage";
 export { default as EmailSentPage } from "./EmailSentPage";
 export { default as AlreadyConfirmedPage } from "./AlreadyConfirmedPage";

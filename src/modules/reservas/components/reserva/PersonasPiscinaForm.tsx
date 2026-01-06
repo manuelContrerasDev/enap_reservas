@@ -1,5 +1,5 @@
 // ============================================================
-// PersonasPiscinaForm.tsx — UX/UI Premium ENAP (Versión Final)
+// PersonasPiscinaForm.tsx — ENAP 2025 (Auditado y sincronizado)
 // ============================================================
 
 import React from "react";
@@ -27,7 +27,7 @@ const PersonasPiscinaForm: React.FC<Props> = ({
   errors,
   max,
 }) => {
-  const personasPiscina = Number(watch("cantidadPersonasPiscina") ?? 0);
+  const personasPiscina = watch("cantidadPersonasPiscina") ?? 0;
 
   const clamp = (n: number) => Math.max(0, Math.min(max, n));
 
@@ -39,12 +39,15 @@ const PersonasPiscinaForm: React.FC<Props> = ({
     });
   };
 
-  const increment = () => update(personasPiscina + 1);
-  const decrement = () => update(personasPiscina - 1);
+  const increment = () => update((personasPiscina ?? 0) + 1);
+  const decrement = () => update((personasPiscina ?? 0) - 1);
 
   const handleManual = (val: string) => {
     const n = parseInt(val, 10);
-    if (isNaN(n)) return update(0);
+    if (isNaN(n)) {
+      update(0);
+      return;
+    }
     update(n);
   };
 
@@ -64,7 +67,11 @@ const PersonasPiscinaForm: React.FC<Props> = ({
           className={`
             w-10 h-10 flex items-center justify-center rounded-lg
             bg-gray-200 text-gray-700 text-xl font-bold transition
-            ${personasPiscina <= 0 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"}
+            ${
+              personasPiscina <= 0
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:bg-gray-300"
+            }
           `}
         >
           −
@@ -75,9 +82,10 @@ const PersonasPiscinaForm: React.FC<Props> = ({
           type="number"
           min={0}
           max={max}
-          {...register("cantidadPersonasPiscina", { valueAsNumber: true })}
-          value={personasPiscina}
-          onChange={(e) => handleManual(e.target.value)}
+          {...register("cantidadPersonasPiscina", {
+            valueAsNumber: true,
+            onChange: (e) => handleManual(e.target.value),
+          })}
           className="
             w-full rounded-lg border px-4 py-3 text-center font-semibold
             shadow-sm focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
@@ -93,14 +101,17 @@ const PersonasPiscinaForm: React.FC<Props> = ({
           className={`
             w-10 h-10 flex items-center justify-center rounded-lg
             bg-gray-200 text-gray-700 text-xl font-bold transition
-            ${personasPiscina >= max ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"}
+            ${
+              personasPiscina >= max
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:bg-gray-300"
+            }
           `}
         >
           +
         </button>
       </div>
 
-      {/* Validación */}
       {errors.cantidadPersonasPiscina && (
         <p className="text-xs text-red-600">
           {errors.cantidadPersonasPiscina.message}

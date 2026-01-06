@@ -1,55 +1,58 @@
+// src/routes/paths.ts
+
 export const PATHS = {
   /* =========================================================================
-   * 🔓 PÚBLICAS — Auth
+   * 🔓 AUTENTICACIÓN
   ========================================================================= */
   AUTH_LOGIN: "/auth/login",
-  AUTH_REGISTER: "/auth/register",
-  AUTH_CONFIRM: "/auth/confirm",
-  AUTH_EMAIL_SENT: "/auth/email-sent",
-  AUTH_LINK_EXPIRED: "/auth/link-expired",
-  AUTH_RESET_CONFIRM: "/auth/reset-confirm",
-  AUTH_RESET_REQUEST: "/auth/reset-request",
-  AUTH_ALREADY_CONFIRMED: "/auth/already-confirmed",
-  AUTH_RESEND_CONFIRMATION: "/auth/resend-confirmation",
-
-  /* =========================================================================
-   * 🏠 HOME BASE (NO SE USA COMO PANTALLA)
-  ========================================================================= */
-  APP_HOME: "/app/home",
+  AUTH_REGISTER: "/auth/registro",
+  AUTH_CONFIRM: "/auth/confirmar",
+  AUTH_EMAIL_SENT: "/auth/email-enviado",
+  AUTH_LINK_EXPIRED: "/auth/enlace-expirado",
+  AUTH_RESET_REQUEST: "/auth/recuperar",
+  AUTH_RESET_CONFIRM: "/auth/restablecer",
+  AUTH_ALREADY_CONFIRMED: "/auth/ya-confirmado",
+  AUTH_RESEND_CONFIRMATION: "/auth/reenviar-confirmacion",
 
   /* =========================================================================
    * 🏠 HOME POR ROL
   ========================================================================= */
-  SOCIO_HOME: "/app/espacios",
-  EXTERNO_HOME: "/app/espacios",
-  ADMIN_HOME: "/app/admin/reservas",
+  SOCIO_HOME: "/espacios",
+  EXTERNO_HOME: "/espacios",
+  ADMIN_HOME: "/admin/reservas",
 
   /* =========================================================================
-   * 👥 SOCIOS / EXTERNOS → ESPACIOS & RESERVAS
+   * 👥 SOCIOS / EXTERNOS
   ========================================================================= */
-  SOCIO_ESPACIOS: "/app/espacios",
-  SOCIO_ESPACIO_DETALLE: "/app/espacios/:id",
-  SOCIO_MIS_RESERVAS: "/app/mis-reservas",
-
-  /* RESERVAS */
-  RESERVA: "/app/reserva",
-  RESERVA_ID: "/app/reservar/:id",
-  RESERVA_PREVIEW: "/app/reserva/preview",
+  SOCIO_ESPACIOS: "/espacios",
+  SOCIO_ESPACIO_DETALLE: "/espacios/:id",
+  SOCIO_MIS_RESERVAS: "/mis-reservas",
 
   /* =========================================================================
-   * 💳 PAGOS
+   * 📅 RESERVAS
   ========================================================================= */
-  RESERVA_PAGO: "/app/pago",
-  PAGO_WEBPAY_RETORNO: "/app/pago/webpay/retorno",
-  PAGO_WEBPAY_FINAL: "/app/pago/webpay/final",
+  RESERVA_ID: "/reservar/:id",
+  RESERVA_PREVIEW: "/reserva/resumen",
+
+  /* =========================================================================
+   * 🧾 TRANSFERENCIA (PAGO MANUAL)
+  ========================================================================= */
+  RESERVA_TRANSFERENCIA: "/reserva/transferencia",
+
+  /* =========================================================================
+   * 💳 PAGOS (FUTURO — CONGELADO)
+  ========================================================================= */
+  RESERVA_PAGO: "/pago",
+  PAGO_WEBPAY_RETORNO: "/pago/webpay/retorno",
+  PAGO_WEBPAY_FINAL: "/pago/webpay/final",
 
   /* =========================================================================
    * 🧑‍💼 ADMINISTRACIÓN
   ========================================================================= */
-  ADMIN_ESPACIOS: "/app/admin/espacios",
-  ADMIN_RESERVAS: "/app/admin/reservas",   //  LISTADO PRINCIPAL
-  ADMIN_RESERVAS_MANUAL: "/app/admin/reservas/crear-reserva", //CREACION MANUAL
-  TESORERIA: "/app/admin/tesoreria",
+  ADMIN_ESPACIOS: "/admin/espacios",
+  ADMIN_RESERVAS: "/admin/reservas",
+  ADMIN_RESERVAS_MANUAL: "/admin/reservas/crear",
+  TESORERIA: "/admin/tesoreria",
 
   /* =========================================================================
    * 🧹 DEFAULT

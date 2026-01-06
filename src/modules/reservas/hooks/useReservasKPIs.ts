@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import type { ReservaFrontend } from "@/types/ReservaBackend";
+import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import { ReservaEstado } from "@/types/enums";
+
 
 export function useReservasKPIs(reservas: ReservaFrontend[] = []) {
   return useMemo(() => {
@@ -13,18 +15,10 @@ export function useReservasKPIs(reservas: ReservaFrontend[] = []) {
       const estado = reservas[i].estado;
 
       switch (estado) {
-        case "CONFIRMADA":
-          confirmadas++;
-          break;
-        case "PENDIENTE":
-          pendientes++;
-          break;
-        case "CANCELADA":
-          canceladas++;
-          break;
-        case "RECHAZADA":
-          rechazadas++;
-          break;
+        case ReservaEstado.CONFIRMADA:
+        case ReservaEstado.PENDIENTE_PAGO:
+        case ReservaEstado.CANCELADA:
+        case ReservaEstado.RECHAZADA:
       }
     }
 

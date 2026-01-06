@@ -2,7 +2,7 @@
 import { useCallback } from "react";
 
 import type { ReservaFrontendType } from "@/validators/reserva.schema";
-import type { Espacio } from "@/context/EspaciosContext";
+import type { EspacioDTO } from "@/types/espacios";
 
 import {
   validarFechasConBloques,
@@ -13,11 +13,12 @@ import { validarCapacidad } from "../utils/validarCapacidad";
 type TipoNotificacion = "error" | "info" | "success";
 
 interface ArgsUseReservaValidator {
-  espacio: Espacio | null;
+  espacio: EspacioDTO | null;
   bloquesOcupados: BloqueFecha[];
   maxCapacidad: number;
   notify: (mensaje: string, tipo: TipoNotificacion) => void;
 }
+
 
 export function useReservaValidator({
   espacio,

@@ -5,15 +5,17 @@ export interface InitPagoResponse {
   ok: true;
   pagoId: string;
   checkoutUrl: string;
-  token: string;
 }
 
 export async function initPago(reservaId: string): Promise<InitPagoResponse> {
-  const resp = await api.post<InitPagoResponse>("/pago/init", { reservaId });
+  const resp = await api.post<InitPagoResponse>(
+    "/api/pagos/checkout",
+    { reservaId }
+  );
 
   const data = resp.data;
 
-  if (!data || !data.ok) {
+  if (!data || !data.ok || !data.checkoutUrl) {
     throw new Error("No se pudo iniciar el pago.");
   }
 

@@ -18,7 +18,10 @@ import { useNotificacion } from "@/context/NotificacionContext";
 const API_URL = import.meta.env.VITE_API_URL;
 
 const resendSchema = z.object({
-  email: z.string().email("Correo inválido"),
+  email: z
+    .string()
+    .email("Correo inválido")
+    .transform((v) => v.trim().toLowerCase()),
 });
 
 type ResendValues = z.infer<typeof resendSchema>;
@@ -40,44 +43,38 @@ export default function ResendConfirmationPage() {
       const res = await fetch(`${API_URL}/api/auth/resend-confirmation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ email: data.email }),
       });
 
       const json = await res.json().catch(() => ({}));
 
-      // ================================
-      // ⚠ Caso 3: Correo ya confirmado
-      // ================================
+      // ✔ Caso: correo ya confirmado
       if (json.code === "EMAIL_ALREADY_CONFIRMED") {
-        agregarNotificacion("Este correo ya está confirmado.", "info");
+        agregarNotificacion("Este correo ya fue confirmado previamente.", "info");
         navigate(PATHS.AUTH_ALREADY_CONFIRMED, { replace: true });
         return;
       }
 
-      // ================================
-      // ⚠ Caso error inesperado
-      // ================================
+      // ⚠ Error inesperado
       if (!res.ok || json.ok === false) {
         agregarNotificacion(
-          json.message || "No se pudo reenviar el correo.",
+          json.message || "No se pudo procesar la solicitud.",
           "error"
         );
         return;
       }
 
-      // ================================
-      // ✔ Caso 1 y 2 → mostrar éxito SIEMPRE
-      // ================================
+      // ✔ Respuesta neutra (SIEMPRE)
       agregarNotificacion(
-        "Si la cuenta existe, se enviará un nuevo enlace.",
+        "Si la cuenta existe, se enviará un nuevo enlace de confirmación.",
         "success"
       );
 
-      navigate(PATHS.AUTH_EMAIL_SENT, { replace: true });
+      navigate(`${PATHS.AUTH_EMAIL_SENT}?type=register`, { replace: true });
 
     } catch (error) {
-      console.error("❌ Error reenviando:", error);
-      agregarNotificacion("Error de conexión", "error");
+      console.error("❌ Error reenviando confirmación:", error);
+      agregarNotificacion("Error de conexión con el servidor.", "error");
     }
   };
 
@@ -91,14 +88,14 @@ export default function ResendConfirmationPage() {
       >
         <AuthHeader
           title="Reenviar confirmación"
-          subtitle="Ingresa tu correo para generar un nuevo enlace"
+          subtitle="Ingresa tu correo para generar un nuevo enlace de activación"
         />
 
         <button
-          onClick={() => navigate(-1)}
-          className="text-sm text-gray-600 hover:text-gray-900 mb-2"
+          onClick={() => navigate(PATHS.AUTH_LOGIN)}
+          className="text-sm text-gray-600 hover:text-gray-900"
         >
-          ← Volver
+          ← Volver al inicio de sesión
         </button>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -110,8 +107,8 @@ export default function ResendConfirmationPage() {
             {...register("email")}
           />
 
-          <AuthButton type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Enviando..." : "Reenviar enlace"}
+          <AuthButton type="submit" loading={isSubmitting}>
+            Reenviar enlace
           </AuthButton>
         </form>
       </motion.div>

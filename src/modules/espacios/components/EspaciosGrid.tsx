@@ -3,16 +3,16 @@ import React, { Suspense } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 
-import type { Espacio } from "@/context/EspaciosContext";
+import type { EspacioDTO } from "@/types/espacios";
 
 const EspacioCardSocio = React.lazy(() =>
   import("@/modules/espacios/components/EspacioCardSocio")
 );
 
 interface Props {
-  espacios: Espacio[];
+  espacios: EspacioDTO[];
   fechaFiltro: string | null;
-  estaOcupadoEnFecha: (id: string, fechaISO: string) => boolean;
+  estaOcupadoEnFecha: (id: string, fechaISO: string | null) => boolean;
 }
 
 export default function EspaciosGrid({
@@ -59,17 +59,21 @@ export default function EspaciosGrid({
       }
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {espacios.map((e, index) => {
+        {espacios.map((espacio, index) => {
           const ocupado =
-            fechaFiltro && fechaFiltro !== ""
-              ? estaOcupadoEnFecha(e.id, fechaFiltro)
+            fechaFiltro !== null
+              ? estaOcupadoEnFecha(espacio.id, fechaFiltro)
               : false;
 
           return (
             <motion.div
-              key={e.id}
-              initial={!prefersReducedMotion ? { opacity: 0, y: 16 } : undefined}
-              animate={!prefersReducedMotion ? { opacity: 1, y: 0 } : undefined}
+              key={espacio.id}
+              initial={
+                !prefersReducedMotion ? { opacity: 0, y: 16 } : undefined
+              }
+              animate={
+                !prefersReducedMotion ? { opacity: 1, y: 0 } : undefined
+              }
               transition={{
                 duration: 0.25,
                 delay: prefersReducedMotion ? 0 : index * 0.03,
@@ -77,7 +81,7 @@ export default function EspaciosGrid({
               viewport={{ once: true }}
             >
               <EspacioCardSocio
-                espacio={e}
+                espacio={espacio}
                 fechaFiltro={fechaFiltro}
                 ocupadoEnFecha={ocupado}
               />

@@ -61,14 +61,16 @@ export default function LoginPage() {
       setValue("password", "");
 
       switch (result.error) {
-        case "USER_NOT_FOUND":
-          return setServerError("El correo ingresado no está registrado.");
-        case "INVALID_PASSWORD":
-          return setServerError("La contraseña es incorrecta.");
         case "EMAIL_NOT_CONFIRMED":
           return setServerError(
             "Tu correo aún no está confirmado. Revisa tu bandeja de entrada."
           );
+
+        case "INVALID_CREDENTIALS":
+          return setServerError(
+            "Correo o contraseña incorrectos."
+          );
+
         default:
           return setServerError(
             "No se pudo iniciar sesión. Inténtalo nuevamente."

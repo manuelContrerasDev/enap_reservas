@@ -1,5 +1,5 @@
 // =====================================================================
-//  FechasForm.tsx — Versión UX/UI Premium ENAP (SINCRONIZADA 100%)
+//  FechasForm.tsx — ENAP 2025 (Auditado y sincronizado)
 // =====================================================================
 
 import React from "react";
@@ -49,16 +49,15 @@ const FechasForm: React.FC<Props> = ({
 }) => {
   const { agregarNotificacion } = useNotificacion();
 
-  const inicio = watch("fechaInicio") || "";
-  const fin = watch("fechaFin") || "";
+  const inicio = watch("fechaInicio");
+  const fin = watch("fechaFin");
 
-  // ============================================================
-  // VALIDAR SOLAPAMIENTOS
-  // ============================================================
+  // ------------------------------------------------------------
+  // Validar solapamiento
+  // ------------------------------------------------------------
   const haySolape = (iniStr: string, finStr: string) => {
     const i = parseYmdLocal(iniStr);
     const f = parseYmdLocal(finStr);
-
     if (!i || !f) return false;
 
     return bloquesOcupados.some((b) => {
@@ -68,101 +67,90 @@ const FechasForm: React.FC<Props> = ({
     });
   };
 
-  // ============================================================
-  // FECHA INICIO CAMBIO
-  // ============================================================
-  const handleInicio = (value: string) => {
-    if (!value) return;
-
+  // ------------------------------------------------------------
+  // Cambio inicio
+  // ------------------------------------------------------------
+  const onInicioChange = (value: string) => {
     const i = parseYmdLocal(value);
     if (!i) return;
 
-    // ❌ Regla: NO iniciar lunes (solo cab/quincho)
     if (espacioTipo !== "PISCINA" && isMonday(i)) {
-      agregarNotificacion("No puedes iniciar una reserva un día lunes.", "info");
-      setValue("fechaInicio", "");
+      agregarNotificacion(
+        "No puedes iniciar una reserva un día lunes.",
+        "info"
+      );
+      setValue("fechaInicio", "", { shouldDirty: true, shouldValidate: true });
       return;
     }
 
-    // Autocolocar fechaInicio
-    setValue("fechaInicio", value, { shouldValidate: true });
+    setValue("fechaInicio", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
 
-    // =====================================================================
-    // Piscina → fechaInicio === fechaFin (reserva por día)
-    // =====================================================================
     if (espacioTipo === "PISCINA") {
-      setValue("fechaFin", value, { shouldValidate: true });
+      setValue("fechaFin", value, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
       return;
     }
-
-    // =====================================================================
-    // CABANA / QUINCHO — autoajustar fin si queda inválido
-    // =====================================================================
 
     if (fin) {
       const f = parseYmdLocal(fin);
       if (!f || f <= i) {
-        // Autoajustar a 3 días
-        const newFin = new Date(i);
-        newFin.setDate(i.getDate() + 3);
+        const autoFin = new Date(i);
+        autoFin.setDate(i.getDate() + 3);
 
-        const iso = newFin.toISOString().slice(0, 10);
-        setValue("fechaFin", iso, { shouldValidate: true });
+        const iso = autoFin.toISOString().slice(0, 10);
+
+        setValue("fechaFin", iso, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
 
         agregarNotificacion(
-          "Ajustamos la fecha de término para cumplir mínimo 3 días.",
+          "Ajustamos la fecha de término para cumplir el mínimo de días.",
           "info"
         );
       }
     }
   };
 
-  // ============================================================
-  // FECHA FIN CAMBIO
-  // ============================================================
-  const handleFin = (value: string) => {
-    if (!value) return;
+  // ------------------------------------------------------------
+  // Cambio fin
+  // ------------------------------------------------------------
+  const onFinChange = (value: string) => {
+    if (!inicio) return;
 
-    const f = parseYmdLocal(value);
     const i = parseYmdLocal(inicio);
+    const f = parseYmdLocal(value);
+    if (!i || !f) return;
 
-    if (!f || !i) return;
-
-    // Piscina → NO editar fechaFin
-    if (espacioTipo === "PISCINA") {
-      agregarNotificacion(
-        "Piscina solo se reserva por 1 día. No puedes cambiar la fecha de término.",
-        "info"
-      );
-      setValue("fechaFin", inicio, { shouldValidate: true });
-      return;
-    }
-
-    // Terminar en lunes sí se permite → no validar
-    // ❌ pero sí validar reglas de días
     const dias = diffDias(i, f);
 
-    if (dias < 3) {
-      agregarNotificacion("La reserva debe tener al menos 3 días.", "error");
+    if (dias < 3 || dias > 6) {
+      agregarNotificacion(
+        "La reserva debe ser entre 3 y 6 días.",
+        "error"
+      );
+      setValue("fechaFin", "", { shouldDirty: true, shouldValidate: true });
       return;
     }
 
-    if (dias > 6) {
-      agregarNotificacion("La reserva no puede exceder 6 días.", "error");
-      return;
-    }
-
-    // Validar solape
     if (haySolape(inicio, value)) {
       agregarNotificacion(
         "El espacio ya está reservado en ese rango de fechas.",
         "error"
       );
+      setValue("fechaFin", "", { shouldDirty: true, shouldValidate: true });
       return;
     }
 
-    // Todo OK
-    setValue("fechaFin", value, { shouldValidate: true });
+    setValue("fechaFin", value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
   };
 
   return (
@@ -171,9 +159,7 @@ const FechasForm: React.FC<Props> = ({
         Fechas de tu reserva
       </legend>
 
-      {/* -------------------------------------------------------- */}
       {/* FECHA INICIO */}
-      {/* -------------------------------------------------------- */}
       <div className="space-y-1">
         <label className="block text-sm font-medium text-gray-700">
           Fecha de inicio
@@ -181,14 +167,12 @@ const FechasForm: React.FC<Props> = ({
 
         <input
           type="date"
-          {...register("fechaInicio")}
-          value={inicio}
           min={minDate}
-          onChange={(e) => handleInicio(e.target.value)}
-          className="
-            w-full rounded-lg border px-4 py-3 shadow-sm
-            focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-          "
+          {...register("fechaInicio", {
+            onChange: (e) => onInicioChange(e.target.value),
+          })}
+          className="w-full rounded-lg border px-4 py-3 shadow-sm
+                     focus:ring-2 focus:ring-enap-cyan"
         />
 
         {errors.fechaInicio && (
@@ -196,9 +180,7 @@ const FechasForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* -------------------------------------------------------- */}
       {/* FECHA FIN */}
-      {/* -------------------------------------------------------- */}
       {espacioTipo !== "PISCINA" && (
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">
@@ -207,20 +189,16 @@ const FechasForm: React.FC<Props> = ({
 
           <input
             type="date"
-            {...register("fechaFin")}
-            value={fin}
             min={inicio || minDate}
-            onChange={(e) => handleFin(e.target.value)}
-            className="
-              w-full rounded-lg border px-4 py-3 shadow-sm
-              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-            "
+            {...register("fechaFin", {
+              onChange: (e) => onFinChange(e.target.value),
+            })}
+            className="w-full rounded-lg border px-4 py-3 shadow-sm
+                       focus:ring-2 focus:ring-enap-cyan"
           />
 
           {errors.fechaFin && (
-            <p className="text-xs text-red-600">
-              {errors.fechaFin.message}
-            </p>
+            <p className="text-xs text-red-600">{errors.fechaFin.message}</p>
           )}
         </div>
       )}

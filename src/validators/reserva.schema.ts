@@ -1,17 +1,9 @@
-// ============================================================
-// VALIDATOR — RESERVA FRONTEND (VERSIÓN FINAL SIN ERRORES)
-// ============================================================
-
 import { z } from "zod";
+import { UsoReserva } from "@/types/enums";
 
-/* ENUMS */
-export const usoReservaEnum = z.enum([
-  "USO_PERSONAL",
-  "CARGA_DIRECTA",
-  "TERCEROS",
-]);
-
-/* HELPERS */
+/* ============================================================
+ * HELPERS
+ * ============================================================ */
 const emailSchema = z
   .string()
   .min(5, "Correo requerido")
@@ -24,49 +16,51 @@ const text = (min = 1, msg = "Campo requerido") =>
 const rutSchema = z.string().trim().min(3, "RUT requerido");
 const telSchema = z.string().trim().min(8, "Teléfono requerido");
 
-/* SCHEMA */
+/* ============================================================
+ * SCHEMA PRINCIPAL — FRONT → BACK (OFICIAL ENAP)
+ * ============================================================ */
 export const reservaFrontendSchema = z
   .object({
-    // Identificación
+    /* ---------------- Identificación ---------------- */
     espacioId: z.string().min(1, "ID requerido"),
 
-    // Fechas
+    /* ---------------- Fechas ---------------- */
     fechaInicio: z.string().min(10, "Fecha inicio requerida"),
     fechaFin: z.string().min(10, "Fecha fin requerida"),
 
-    // Personas
+    /* ---------------- Cantidades ---------------- */
     cantidadPersonas: z.number().int().min(1),
-    cantidadPersonasPiscina: z.number().int().min(0),  // <-- FIX
+    cantidadPersonasPiscina: z.number().int().min(0).default(0),
 
-    // Socio
+    /* ---------------- Socio ---------------- */
     nombreSocio: text(2),
     rutSocio: rutSchema,
     telefonoSocio: telSchema,
     correoEnap: emailSchema,
-
     correoPersonal: emailSchema.nullable().default(null),
 
-    // Uso
-    usoReserva: usoReservaEnum,
+    /* ---------------- Uso ---------------- */
+    usoReserva: z.nativeEnum(UsoReserva),
     socioPresente: z.boolean(),
 
-    // Responsable — FIX: nunca undefined
+    /* ---------------- Responsable ---------------- */
     nombreResponsable: z.string().nullable().default(null),
     rutResponsable: z.string().nullable().default(null),
     emailResponsable: emailSchema.nullable().default(null),
 
-    // Invitados — FIX: array siempre definido
+    /* ---------------- Invitados ---------------- */
     invitados: z
       .array(
         z.object({
           nombre: text(),
           rut: z.string().min(3),
           edad: z.number().int().optional(),
+          esPiscina: z.boolean().default(false),
         })
       )
       .default([]),
 
-    // Términos
+    /* ---------------- Términos ---------------- */
     terminosAceptados: z
       .boolean()
       .refine((v) => v === true, "Debes aceptar los términos"),
@@ -74,7 +68,11 @@ export const reservaFrontendSchema = z
     terminosVersion: z.string().nullable().default(null),
   })
 
-  // Validación de fechas
+  /* ============================================================
+   * VALIDACIONES
+   * ============================================================ */
+
+  // Fechas válidas
   .refine(
     (data) => new Date(data.fechaFin) > new Date(data.fechaInicio),
     {
@@ -83,17 +81,14 @@ export const reservaFrontendSchema = z
     }
   )
 
-  // Normalización final
+  // Reglas estructurales
   .superRefine((data, ctx) => {
+    /* ---------- Responsable ---------- */
     if (data.socioPresente) {
       data.nombreResponsable = null;
       data.rutResponsable = null;
       data.emailResponsable = null;
     } else {
-      data.nombreResponsable = data.nombreResponsable?.trim() || null;
-      data.rutResponsable = data.rutResponsable?.trim() || null;
-      data.emailResponsable = data.emailResponsable?.trim() || null;
-
       if (
         !data.nombreResponsable ||
         !data.rutResponsable ||
@@ -106,6 +101,31 @@ export const reservaFrontendSchema = z
         });
       }
     }
+
+    /* ---------- Piscina ---------- */
+    const piscinaMarcados = data.invitados.filter(
+      (i) => i.esPiscina
+    ).length;
+
+    if (piscinaMarcados > data.cantidadPersonasPiscina) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Marcaste ${piscinaMarcados} personas para piscina, pero declaraste ${data.cantidadPersonasPiscina}.`,
+        path: ["invitados"],
+      });
+    }
   });
 
-export type ReservaFrontendType = z.infer<typeof reservaFrontendSchema>;
+/* ============================================================
+ * TIPOS CORRECTOS (CLAVE)
+ * ============================================================ */
+
+/**
+ * ✅ INPUT → para react-hook-form + zodResolver
+ */
+export type ReservaFrontendType = z.input<typeof reservaFrontendSchema>;
+
+/**
+ * ✅ OUTPUT → datos normalizados (parseados)
+ */
+export type ReservaFrontendParsed = z.output<typeof reservaFrontendSchema>;

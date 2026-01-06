@@ -12,6 +12,8 @@ import ResultadoCard from "@/modules/pagos/components/resultado/ResultadoCard";
 import ResultadoIcon from "@/modules/pagos/components/resultado/ResultadoIcon";
 import ResultadoDetalle from "@/modules/pagos/components/resultado/ResultadoDetalle";
 import ResultadoAcciones from "@/modules/pagos/components/resultado/ResultadoAcciones";
+import { usePago } from "@/modules/pagos/hooks/usePago";
+
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -28,6 +30,11 @@ interface PagoDetalle {
 export default function PagoResultadoPage() {
   const [params] = useSearchParams();
   const { token } = useAuth();
+  const { resetPago } = usePago(); // 👈 AQUÍ
+
+    useEffect(() => {
+      resetPago();
+    }, [resetPago]);
 
   const pagoId = params.get("pagoId");
   const reservaQS = params.get("reservaId");
@@ -39,10 +46,9 @@ export default function PagoResultadoPage() {
 
   // ============================================================
   // Normalizar estado recibido desde Webpay
-  // (solo para mostrar UX antes de cargar detalle real de BD)
   // ============================================================
   const estadoQuery: "approved" | "cancelled" | "rejected" | "error" =
-    ["approved", "success", "authorized", "accepted"].includes(estadoQS)
+    estadoQS === "approved"
       ? "approved"
       : estadoQS === "cancelled"
       ? "cancelled"
@@ -127,7 +133,7 @@ export default function PagoResultadoPage() {
   // ============================================================
   // Determinar estado final combinando Webpay+BD
   // ============================================================
-  const estadoBD = detalle?.status.toLowerCase(); // approved, rejected...
+  const estadoBD = detalle?.status?.toLowerCase();
 
   const estadoFinal: "approved" | "rejected" | "cancelled" | "error" =
     estadoBD === "approved"

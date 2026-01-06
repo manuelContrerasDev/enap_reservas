@@ -1,50 +1,84 @@
-// src/components/espacios/EspacioCardAdmin.tsx
-
+// src/modules/espacios/components/EspacioCardAdmin.tsx
 import React, { memo, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Edit, Power, Trash2, Users } from "lucide-react";
-import type { Espacio } from "@/context/EspaciosContext";
+import {
+  Edit,
+  Power,
+  Trash2,
+  Users,
+  DollarSign,
+  Info,
+} from "lucide-react";
+
+import type { EspacioDTO } from "@/types/espacios";
 import { useEspacios } from "@/context/EspaciosContext";
 import { useNotificacion } from "@/context/NotificacionContext";
 
-const CLP = new Intl.NumberFormat("es-CL");
+/* ============================================================
+ * Utils
+ * ============================================================ */
+const CLP = new Intl.NumberFormat("es-CL", {
+  style: "currency",
+  currency: "CLP",
+  maximumFractionDigits: 0,
+});
 
+const modalidadLabel = (m: EspacioDTO["modalidadCobro"]) => {
+  switch (m) {
+    case "POR_NOCHE":
+      return "Por noche";
+    case "POR_PERSONA":
+      return "Por persona";
+    default:
+      return "Por día";
+  }
+};
+
+/* ============================================================
+ * Props
+ * ============================================================ */
 interface Props {
-  espacio: Espacio;
-  onEditar: (espacio: Espacio) => void;
+  espacio: EspacioDTO;
+  onEditar: (espacio: EspacioDTO) => void;
   onEliminar: (id: string) => void;
 }
 
+/* ============================================================
+ * Component
+ * ============================================================ */
 const EspacioCardAdmin: React.FC<Props> = memo(
   ({ espacio, onEditar, onEliminar }) => {
     const { toggleActivo } = useEspacios();
     const { agregarNotificacion } = useNotificacion();
 
-    /* ============================================================
-     * TOGGLE (Activo / Inactivo)
-     * ============================================================ */
+    /* --------------------------------------------------------
+     * Toggle activo
+     * -------------------------------------------------------- */
     const handleToggle = useCallback(async () => {
       try {
         await toggleActivo(espacio.id);
         agregarNotificacion(
-          `Espacio ${espacio.activo ? "desactivado" : "activado"} correctamente`,
+          `Espacio ${
+            espacio.activo ? "desactivado" : "activado"
+          } correctamente`,
           "success"
         );
       } catch {
-        agregarNotificacion("Error actualizando estado", "error");
+        agregarNotificacion("❌ Error actualizando estado", "error");
       }
     }, [espacio.id, espacio.activo, toggleActivo, agregarNotificacion]);
 
-    /* ============================================================
-     * Eliminar espacio
-     * ============================================================ */
+    /* --------------------------------------------------------
+     * Eliminar (soft delete)
+     * -------------------------------------------------------- */
     const handleEliminar = useCallback(() => {
       onEliminar(espacio.id);
     }, [espacio.id, onEliminar]);
 
     return (
       <motion.div
-        className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 flex flex-col gap-4 hover:shadow-md transition-all"
+        className="bg-white border border-gray-200 rounded-xl shadow-sm
+                   p-5 flex flex-col gap-4 hover:shadow-md transition-all"
         whileHover={{ scale: 1.01 }}
       >
         {/* HEADER */}
@@ -64,71 +98,106 @@ const EspacioCardAdmin: React.FC<Props> = memo(
           </span>
         </div>
 
-        {/* INFO */}
+        {/* INFO GENERAL */}
         <div className="flex flex-col gap-2 text-sm text-gray-700">
           <div className="flex items-center gap-2">
-            <Users size={16} className="text-[#002E3E]" />
-            Capacidad:{" "}
-            <strong>
-              {espacio.capacidad}
-              {espacio.capacidadExtra
-                ? ` (+${espacio.capacidadExtra})`
-                : ""}
-            </strong>
+            <Users size={16} />
+            Capacidad base:
+            <strong className="ml-1">{espacio.capacidad}</strong>
           </div>
-
-          <div>
-            <span className="font-medium">Tarifa Socio:</span>{" "}
-            ${CLP.format(espacio.tarifaClp)}
-          </div>
-
-          {espacio.tarifaExterno && (
-            <div>
-              <span className="font-medium">Tarifa Externo:</span>{" "}
-              ${CLP.format(espacio.tarifaExterno)}
-            </div>
-          )}
 
           <div className="text-xs text-gray-500">
-            Tipo: {espacio.tipo} — Modalidad: {espacio.modalidadCobro}
+            Tipo: <strong>{espacio.tipo}</strong> — Modalidad:{" "}
+            <strong>{modalidadLabel(espacio.modalidadCobro)}</strong>
           </div>
+        </div>
+
+        {/* TARIFAS */}
+        <div className="border-t pt-3 flex flex-col gap-2 text-sm">
+          <div className="flex items-center gap-2 font-semibold text-gray-700">
+            <DollarSign size={16} /> Tarifas base
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              Socio:
+              <strong className="ml-1">
+                {CLP.format(espacio.precioBaseSocio)}
+              </strong>
+            </div>
+            <div>
+              Externo:
+              <strong className="ml-1">
+                {CLP.format(espacio.precioBaseExterno)}
+              </strong>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+            <div>
+              Extra Socio:
+              <strong className="ml-1">
+                {CLP.format(espacio.precioPersonaAdicionalSocio)}
+              </strong>
+            </div>
+            <div>
+              Extra Externo:
+              <strong className="ml-1">
+                {CLP.format(espacio.precioPersonaAdicionalExterno)}
+              </strong>
+            </div>
+          </div>
+
+          {espacio.tipo === "PISCINA" && (
+            <div className="mt-1 flex items-start gap-2 text-xs text-blue-700 bg-blue-50 p-2 rounded">
+              <Info size={14} className="mt-[2px]" />
+              <span>
+                Piscina se cobra <strong>por persona</strong>:
+                <br />
+                Socio {CLP.format(espacio.precioPiscinaSocio)} / Externo{" "}
+                {CLP.format(espacio.precioPiscinaExterno)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* BOTONES */}
         <div className="flex items-center gap-3 pt-3 border-t border-gray-100">
-          {/* Editar */}
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => onEditar(espacio)}
-            className="flex items-center gap-2 bg-[#DEC01F] text-[#002E3E] py-2 px-4 rounded-lg hover:bg-[#E8CF4F] text-sm font-semibold"
+            className="flex items-center gap-2 bg-[#DEC01F] text-[#002E3E]
+                       py-2 px-4 rounded-lg hover:bg-[#E8CF4F]
+                       text-sm font-semibold"
           >
             <Edit size={16} /> Editar
           </motion.button>
 
-          {/* Toggle estado */}
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleToggle}
-            className={`flex items-center gap-2 py-2 px-4 rounded-lg text-sm font-semibold ${
-              espacio.activo
-                ? "bg-red-100 text-red-600 hover:bg-red-200"
-                : "bg-green-100 text-green-700 hover:bg-green-200"
-            }`}
+            className={`flex items-center gap-2 py-2 px-4 rounded-lg
+              text-sm font-semibold ${
+                espacio.activo
+                  ? "bg-red-100 text-red-600 hover:bg-red-200"
+                  : "bg-green-100 text-green-700 hover:bg-green-200"
+              }`}
           >
             <Power size={16} />
             {espacio.activo ? "Desactivar" : "Activar"}
           </motion.button>
 
-          {/* Eliminar */}
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleEliminar}
-            className="flex items-center gap-2 bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600 text-sm font-semibold"
+            className="flex items-center gap-2 bg-red-500 text-white
+                       py-2 px-4 rounded-lg hover:bg-red-600
+                       text-sm font-semibold"
           >
             <Trash2 size={16} /> Eliminar
           </motion.button>
         </div>
-      </motion.div> 
+      </motion.div>
     );
   }
 );

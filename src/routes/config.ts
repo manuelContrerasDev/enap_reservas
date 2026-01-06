@@ -1,3 +1,4 @@
+// src/routes/paths.ts
 export const PATHS = {
   // 🔓 Auth
   AUTH_LOGIN: "/auth/login",
@@ -10,32 +11,26 @@ export const PATHS = {
   AUTH_ALREADY_CONFIRMED: "/auth/already-confirmed",
   AUTH_RESEND_CONFIRMATION: "/auth/resend-confirmation",
 
-  // 🏠 Bases
-  APP_HOME: "/app/home",
+  // 🏠 Home por rol
+  SOCIO_HOME: "/espacios",
+  EXTERNO_HOME: "/espacios",
+  ADMIN_HOME: "/admin/reservas",
 
-  // 👥 Usuario SOCIO / EXTERNO
-  SOCIO_HOME: "/app/espacios",
-  EXTERNO_HOME: "/app/espacios",
-  SOCIO_ESPACIOS: "/app/espacios",
-  SOCIO_ESPACIO_DETALLE: "/app/espacios/:id",
-  SOCIO_MIS_RESERVAS: "/app/mis-reservas",
+  // 👥 Socio / Externo
+  SOCIO_ESPACIOS: "/espacios",
+  SOCIO_ESPACIO_DETALLE: "/espacios/:id",
+  SOCIO_MIS_RESERVAS: "/mis-reservas",
 
   // 📅 Reservas
-  RESERVA: "/app/reserva",
-  RESERVA_ID: "/app/reservar/:id",
-  RESERVA_PREVIEW: "/app/reserva/preview",
-
-  // 💳 Pagos
-  RESERVA_PAGO: "/app/pago",
-  PAGO_WEBPAY_RETORNO: "/app/pago/webpay/retorno",
-  PAGO_WEBPAY_FINAL: "/app/pago/webpay/final",
+  RESERVA_ID: "/reservar/:id",
+  RESERVA_PREVIEW: "/reserva/preview",
+  RESERVA_TRANSFERENCIA: "/reserva/transferencia",
 
   // 🧑‍💼 Admin
-  ADMIN_HOME: "/app/admin/reservas",
-  ADMIN_RESERVAS: "/app/admin/reservas",
-  ADMIN_RESERVAS_MANUAL: "/app/admin/reservas/crear-reserva",
-  ADMIN_ESPACIOS: "/app/admin/espacios",
-  TESORERIA: "/app/admin/tesoreria",
+  ADMIN_RESERVAS: "/admin/reservas",
+  ADMIN_RESERVAS_MANUAL: "/admin/reservas/crear",
+  ADMIN_ESPACIOS: "/admin/espacios",
+  TESORERIA: "/admin/tesoreria",
 
   // 🔚 Default
   NOT_FOUND: "*",

@@ -1,12 +1,9 @@
-export * from "../modules/reservas/hooks/useReservaFilters";
-export * from "@/modules/reservas/hooks/useFilterReservas";
+// src/hooks/index.ts (CLEAN)
+
 export * from "../components/ui/hooks/usePagination";
-export * from "../modules/reservas/hooks/useReservasKPIs";
 export * from "../components/ui/hooks/useFadeUp";
-export * from "../archive/hooks/useAuthForm";
-export * from "../archive/hooks/useCalcularReserva";
-export * from "../archive/hooks/useGuestAuth";
-export * from "../components/ui/hooks/usePagination";
-export * from "../modules/reservas/hooks/useReservaEstado";
-export * from "../modules/reservas/hooks/useReservasAdmin";
+
+export * from "../modules/admin/reservas/hooks/useReservasAdmin";
 export * from "../modules/reservas/hooks/useReservasSocio";
+export * from "../modules/reservas/hooks/useReservasKPIs";
+export * from "../modules/reservas/hooks/useReservaValidator";

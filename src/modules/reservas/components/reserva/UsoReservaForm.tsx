@@ -29,8 +29,10 @@ export const UsoReservaForm: React.FC<Props> = ({
   const usoReserva = watch("usoReserva");
   const socioPresente = watch("socioPresente");
 
-  const handleUso = (value: string) => {
-    setValue("usoReserva", value as ReservaFrontendType["usoReserva"], {
+  const handleUso = (
+    value: ReservaFrontendType["usoReserva"]
+  ) => {
+    setValue("usoReserva", value, {
       shouldValidate: true,
       shouldDirty: true,
     });
@@ -52,7 +54,9 @@ export const UsoReservaForm: React.FC<Props> = ({
 
         <select
           value={usoReserva}
-          onChange={(e) => handleUso(e.target.value)}
+          onChange={(e) => 
+            handleUso(e.target.value as ReservaFrontendType["usoReserva"])
+          }
           className="
             mt-1 w-full rounded-lg border px-4 py-3 text-sm
             focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
@@ -96,12 +100,12 @@ export const UsoReservaForm: React.FC<Props> = ({
         <div className="mt-4 bg-gray-50 border rounded-xl p-4 shadow-inner">
           <ResponsableForm
             register={register}
-            watch={watch}
             setValue={setValue}
             errors={errors}
           />
         </div>
       )}
+
     </section>
   );
 };

@@ -3,14 +3,14 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Filter } from "lucide-react";
 
-import type { TipoFiltro } from "@/modules/espacios/hooks/useEspaciosFiltros";
+import type { TipoFiltro } from "@/types/espacios";
 
 interface Props {
   search: string;
-  setSearch: React.Dispatch<React.SetStateAction<string>>;
+  setSearch: (value: string) => void;
 
   tipo: TipoFiltro;
-  setTipo: React.Dispatch<React.SetStateAction<TipoFiltro>>;
+  setTipo: (value: TipoFiltro) => void;
 
   resetFiltros: () => void;
 }
@@ -50,7 +50,7 @@ function EspaciosFilters({
           <input
             aria-label="Buscar espacios"
             type="text"
-            placeholder="Ej: Cabaña 1, Quincho 2…"
+            placeholder="Ej: Cabaña, Quincho, Piscina…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="bg-transparent text-sm outline-none flex-1 placeholder:text-gray-400"
@@ -88,7 +88,7 @@ function EspaciosFilters({
         </div>
       </div>
 
-      {/* BOTÓN RESET */}
+      {/* RESET */}
       {(search || tipo !== "TODOS") && (
         <button
           onClick={resetFiltros}

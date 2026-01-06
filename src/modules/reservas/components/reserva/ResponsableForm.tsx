@@ -1,29 +1,33 @@
-// src/components/reserva/ResponsableForm.tsx
+// ============================================================
+// ResponsableForm.tsx — ENAP 2025 (Auditado y sincronizado)
+// ============================================================
+
 import React from "react";
 import {
   UseFormRegister,
-  UseFormWatch,
   UseFormSetValue,
   FieldErrors,
 } from "react-hook-form";
+
 import { ReservaFrontendType } from "@/validators/reserva.schema";
 
 interface Props {
   register: UseFormRegister<ReservaFrontendType>;
-  watch: UseFormWatch<ReservaFrontendType>;
   setValue: UseFormSetValue<ReservaFrontendType>;
   errors: FieldErrors<ReservaFrontendType>;
 }
 
 const ResponsableForm: React.FC<Props> = ({
   register,
-  watch,
   setValue,
   errors,
 }) => {
-  const nombre = watch("nombreResponsable") || "";
-  const rut = watch("rutResponsable") || "";
-  const email = watch("emailResponsable") || "";
+  const update = (field: keyof ReservaFrontendType, value: string) => {
+    setValue(field, value, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
 
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
@@ -31,7 +35,7 @@ const ResponsableForm: React.FC<Props> = ({
         Datos del responsable (obligatorio si el socio no asiste)
       </p>
 
-      {/* Nombre */}
+      {/* ===================== Nombre ===================== */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-gray-700">
           Nombre del responsable
@@ -40,13 +44,10 @@ const ResponsableForm: React.FC<Props> = ({
         <input
           type="text"
           placeholder="Nombre del responsable"
-          value={nombre}
-          onChange={(e) =>
-            setValue("nombreResponsable", e.target.value, {
-              shouldValidate: true,
-              shouldDirty: true,
-            })
-          }
+          {...register("nombreResponsable", {
+            onChange: (e) =>
+              update("nombreResponsable", e.target.value),
+          })}
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
 
@@ -57,7 +58,7 @@ const ResponsableForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* RUT */}
+      {/* ===================== RUT ===================== */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-gray-700">
           RUT del responsable
@@ -66,14 +67,10 @@ const ResponsableForm: React.FC<Props> = ({
         <input
           type="text"
           placeholder="RUT del responsable"
-          {...register("rutResponsable")}
-          value={rut}
-          onChange={(e) =>
-            setValue("rutResponsable", e.target.value, {
-              shouldValidate: true,
-              shouldDirty: true,
-            })
-          }
+          {...register("rutResponsable", {
+            onChange: (e) =>
+              update("rutResponsable", e.target.value),
+          })}
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
 
@@ -84,7 +81,7 @@ const ResponsableForm: React.FC<Props> = ({
         )}
       </div>
 
-      {/* Email */}
+      {/* ===================== Email ===================== */}
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-gray-700">
           Email del responsable
@@ -93,14 +90,10 @@ const ResponsableForm: React.FC<Props> = ({
         <input
           type="email"
           placeholder="Correo de contacto"
-          {...register("emailResponsable")}
-          value={email}
-          onChange={(e) =>
-            setValue("emailResponsable", e.target.value, {
-              shouldValidate: true,
-              shouldDirty: true,
-            })
-          }
+          {...register("emailResponsable", {
+            onChange: (e) =>
+              update("emailResponsable", e.target.value),
+          })}
           className="w-full rounded-lg border px-3 py-2 text-sm"
         />
 

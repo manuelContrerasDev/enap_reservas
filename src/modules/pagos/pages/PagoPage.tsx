@@ -1,8 +1,8 @@
 // ============================================================
-// PagoPage.tsx — Step 3 (Ir a Pagar) — UX/UI Premium ENAP 2025
+// PagoPage.tsx — Step 3 (Ir a Pagar) — ENAP 2025 (SINCRONIZADO)
 // ============================================================
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CreditCard, Loader2, AlertTriangle } from "lucide-react";
@@ -12,13 +12,13 @@ import { useAuth } from "@/context/auth";
 import { usePago } from "@/modules/pagos/hooks/usePago";
 
 import CheckoutProgress from "@/components/ui/CheckoutProgress";
-
 import ResumenReserva from "@/modules/pagos/components/ResumenReserva";
 import TerminosPago from "@/modules/pagos/components/TerminosPago";
 import ModalTerminosEnap from "@/modules/reservas/components/modals/ModalTerminosEnap";
 
+import { ReservaEstado } from "@/types/enums";
+import type { ReservaDTO } from "@/types/ReservaDTO";
 import { PATHS } from "@/routes/paths";
-import type { ReservaFrontend } from "@/types/ReservaBackend";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -32,23 +32,28 @@ export default function PagoPage() {
   const { agregarNotificacion } = useNotificacion();
   const { iniciarPago, estado } = usePago();
 
-  const [error, setError] = useState<string | null>(null);
-  const [reserva, setReserva] = useState<ReservaFrontend | null>(null);
+  const [reserva, setReserva] = useState<ReservaDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Modal estados
+  // Términos
   const [aceptaReglamento, setAceptaReglamento] = useState(false);
   const [aceptaPoliticas, setAceptaPoliticas] = useState(false);
-  const [modalVisible, setModalVisible] = useState<null | "reglamento" | "politicas">(null);
+  const [modalVisible, setModalVisible] =
+    useState<null | "reglamento" | "politicas">(null);
 
-  const puedePagar = aceptaReglamento && aceptaPoliticas && estado !== "loading";
+  const puedePagar =
+    aceptaReglamento && aceptaPoliticas && estado !== "loading";
 
-  /* ============================================================
-   * CARGAR RESERVA DIRECTAMENTE DESDE API
-   * ============================================================ */
+  const pagandoRef = useRef(false);
+
+  // ============================================================
+  // FETCH RESERVA
+  // ============================================================
   useEffect(() => {
     if (!reservaId) {
       setError("No se encontró el ID de la reserva.");
+      setLoading(false);
       return;
     }
 
@@ -73,12 +78,10 @@ export default function PagoPage() {
         }
 
         if (!cancel) {
-          setReserva(json.data);
+          setReserva(json.data as ReservaDTO);
         }
       } catch (err: any) {
-        if (!cancel) {
-          setError(err.message);
-        }
+        if (!cancel) setError(err.message);
       } finally {
         if (!cancel) setLoading(false);
       }
@@ -90,9 +93,9 @@ export default function PagoPage() {
     };
   }, [reservaId, token, agregarNotificacion, navigate]);
 
-  /* ============================================================
-   * ESTADOS DE CARGA / ERROR
-   * ============================================================ */
+  // ============================================================
+  // ESTADOS
+  // ============================================================
   if (loading) {
     return (
       <main className="min-h-[70vh] flex flex-col items-center justify-center">
@@ -112,7 +115,7 @@ export default function PagoPage() {
 
         <button
           onClick={() => navigate(PATHS.SOCIO_ESPACIOS)}
-          className="mt-4 bg-[#002E3E] text-white px-5 py-2 rounded-lg hover:bg-[#01384A]"
+          className="mt-4 bg-[#002E3E] text-white px-5 py-2 rounded-lg"
         >
           Volver
         </button>
@@ -120,24 +123,36 @@ export default function PagoPage() {
     );
   }
 
-  /* ============================================================
-   * DATOS DE RESERVA
-   * ============================================================ */
-  const {
-    espacioNombre,
-    fechaInicio,
-    fechaFin,
-    dias,
-    cantidadPersonas,
-    totalClp,
-  } = reserva;
+  // ============================================================
+  // BLOQUEO SI NO ES PAGABLE
+  // ============================================================
+  if (reserva.estado !== ReservaEstado.PENDIENTE_PAGO) {
+    return (
+      <section className="flex flex-col items-center justify-center py-24 text-center">
+        <AlertTriangle className="text-yellow-500 mb-4" size={54} />
+        <h2 className="text-2xl font-bold text-gray-800">
+          Esta reserva ya no está disponible para pago
+        </h2>
+        <p className="mt-2 text-gray-600">
+          Estado actual: {reserva.estado}
+        </p>
 
-  const monto = totalClp ?? 0;
+        <button
+          onClick={() => navigate(PATHS.SOCIO_MIS_RESERVAS)}
+          className="mt-6 bg-[#002E3E] text-white px-6 py-2 rounded-lg"
+        >
+          Ver mis reservas
+        </button>
+      </section>
+    );
+  }
 
-  /* ============================================================
-   * INICIAR PAGO (usando módulo nuevo usePago)
-   * ============================================================ */
-  const handlePago = async () => {
+  // ============================================================
+  // INICIAR PAGO (Webpay)
+  // ============================================================
+  const handlePago = () => {
+    if (pagandoRef.current) return;
+
     if (!puedePagar) {
       agregarNotificacion(
         "Debes aceptar el reglamento y las políticas antes de continuar.",
@@ -146,46 +161,37 @@ export default function PagoPage() {
       return;
     }
 
-    if (!monto || monto <= 0) {
-      agregarNotificacion("El monto del pago es inválido.", "error");
-      return;
-    }
+    pagandoRef.current = true;
 
-    try {
-      await iniciarPago(reservaId!); // ahora NO se pasa el monto (lo calcula BE)
-    } catch (err) {
-      console.error("❌ Error iniciarPago:", err);
-      agregarNotificacion("Ocurrió un error iniciando el pago.", "error");
-    }
+    // 🔥 El hook maneja errores y redirección
+    iniciarPago(reserva.id);
   };
 
-  /* ============================================================
-   * RENDER PRINCIPAL
-   * ============================================================ */
+  // ============================================================
+  // RENDER
+  // ============================================================
   return (
     <main className="min-h-[calc(100vh-120px)] bg-[#F9FAFB] py-12 px-6 flex flex-col items-center">
       <CheckoutProgress step={3} />
 
       <div className="max-w-3xl w-full">
-        <motion.h1
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-3xl font-bold text-[#002E3E] mb-10 text-center"
-        >
+        <h1 className="text-3xl font-bold text-[#002E3E] mb-10 text-center">
           Confirmación de Pago
-        </motion.h1>
+        </h1>
 
-        {/* RESUMEN */}
         <ResumenReserva
-          espacioNombre={espacioNombre}
-          dias={dias}
-          fechaInicio={fechaInicio}
-          fechaFin={fechaFin}
-          cantidadPersonas={cantidadPersonas}
-          monto={monto}
+          espacioNombre={reserva.espacio?.nombre ?? "Espacio"}
+          dias={reserva.dias}
+          fechaInicio={reserva.fechaInicio}
+          fechaFin={reserva.fechaFin}
+          cantidadPersonas={
+            reserva.cantidadAdultos +
+            reserva.cantidadNinos +
+            reserva.cantidadPiscina
+          }
+          monto={reserva.totalClp}
         />
 
-        {/* TÉRMINOS */}
         <TerminosPago
           aceptaReglamento={aceptaReglamento}
           setAceptaReglamento={setAceptaReglamento}
@@ -195,49 +201,30 @@ export default function PagoPage() {
           onOpenPoliticas={() => setModalVisible("politicas")}
         />
 
-        {/* BOTÓN WEBPAY */}
-        <motion.section
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-md p-8 border border-gray-100"
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <CreditCard className="text-[#002E3E]" size={24} />
-            <h3 className="text-xl font-bold text-[#002E3E]">Pagar con Webpay</h3>
-          </div>
-
+        <motion.section className="bg-white rounded-xl shadow-md p-8 border">
           <button
             onClick={handlePago}
             disabled={!puedePagar}
-            className="w-full bg-[#DEC01F] hover:bg-[#E5D14A] text-[#002E3E] font-bold py-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
+            className="w-full bg-[#DEC01F] text-[#002E3E] font-bold py-4 rounded-lg flex justify-center gap-2"
           >
             {estado === "loading" ? (
               <>
                 <Loader2 className="animate-spin" size={20} />
-                <span>Redirigiendo a Webpay...</span>
+                Redirigiendo a Webpay…
               </>
             ) : (
               <>
                 <CreditCard size={22} />
-                <span>Ir a pagar</span>
+                Ir a pagar
               </>
             )}
           </button>
-
         </motion.section>
       </div>
 
-      {/* MODALES */}
-      {modalVisible === "reglamento" && (
+      {modalVisible && (
         <ModalTerminosEnap
-          tipo="reglamento"
-          onClose={() => setModalVisible(null)}
-        />
-      )}
-
-      {modalVisible === "politicas" && (
-        <ModalTerminosEnap
-          tipo="politicas"
+          tipo={modalVisible}
           onClose={() => setModalVisible(null)}
         />
       )}

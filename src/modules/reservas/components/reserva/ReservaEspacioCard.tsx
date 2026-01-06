@@ -1,5 +1,5 @@
 // ========================================================================
-// ReservaEspacioCard.tsx
+// ReservaEspacioCard.tsx — ENAP 2025 (SYNC REAL)
 // ========================================================================
 
 import React from "react";
@@ -8,15 +8,18 @@ import { motion, useReducedMotion } from "framer-motion";
 const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&auto=format";
 
+export type TipoEspacio = "CABANA" | "QUINCHO" | "PISCINA";
+export type ModalidadCobro = "POR_DIA" | "POR_NOCHE" | "POR_PERSONA";
+
 export interface ReservaEspacioCardProps {
   nombre: string;
-  tipo: string;
+  tipo: TipoEspacio;
   descripcion?: string | null;
   imagenUrl?: string | null;
   capacidad: number;
-  capacidadExtra?: number | null;
-  tarifaClp: number;
-  tarifaLabel: string;
+
+  modalidadCobro: ModalidadCobro;
+  precioBaseReferencial: number;
 }
 
 export const ReservaEspacioCard: React.FC<ReservaEspacioCardProps> = ({
@@ -25,16 +28,22 @@ export const ReservaEspacioCard: React.FC<ReservaEspacioCardProps> = ({
   descripcion,
   imagenUrl,
   capacidad,
-  capacidadExtra,
-  tarifaClp,
-  tarifaLabel,
+  modalidadCobro,
+  precioBaseReferencial,
 }) => {
-  const prefersMotion = useReducedMotion();
+  const prefersReducedMotion = useReducedMotion();
+
+  const labelCobro =
+    modalidadCobro === "POR_DIA"
+      ? "día"
+      : modalidadCobro === "POR_NOCHE"
+      ? "noche"
+      : "persona";
 
   return (
     <motion.div
-      initial={!prefersMotion ? { opacity: 0, x: -20 } : undefined}
-      animate={!prefersMotion ? { opacity: 1, x: 0 } : undefined}
+      initial={!prefersReducedMotion ? { opacity: 0, x: -20 } : undefined}
+      animate={!prefersReducedMotion ? { opacity: 1, x: 0 } : undefined}
       transition={{ duration: 0.4 }}
       className="rounded-xl overflow-hidden bg-white shadow-md border border-gray-200"
     >
@@ -54,10 +63,10 @@ export const ReservaEspacioCard: React.FC<ReservaEspacioCardProps> = ({
           {tipo}
         </span>
 
-        {/* Tarifa */}
+        {/* Tarifa referencial */}
         <span className="absolute top-4 right-4 inline-flex px-4 py-1 rounded-full 
           bg-[#FFD84D] text-[#003B4D] text-xs font-bold shadow">
-          {tarifaClp.toLocaleString("es-CL")} CLP / {tarifaLabel}
+          Desde {precioBaseReferencial.toLocaleString("es-CL")} CLP / {labelCobro}
         </span>
       </figure>
 
@@ -65,7 +74,8 @@ export const ReservaEspacioCard: React.FC<ReservaEspacioCardProps> = ({
         <h2 className="text-2xl font-extrabold text-[#002E3E]">{nombre}</h2>
 
         <p className="text-gray-700 text-sm leading-relaxed">
-          {descripcion || "Espacio disponible para reservas en Centro Recreacional ENAP."}
+          {descripcion ||
+            "Espacio disponible para reservas en el Centro Recreacional ENAP."}
         </p>
 
         <ul className="text-sm text-gray-700 space-y-1">
@@ -74,18 +84,17 @@ export const ReservaEspacioCard: React.FC<ReservaEspacioCardProps> = ({
           </li>
 
           <li>
-            Capacidad: <strong>{capacidad}</strong>
-            {capacidadExtra && <> (+{capacidadExtra} extra)</>}
+            Capacidad máxima: <strong>{capacidad}</strong> personas
           </li>
 
           <li>
-            Tarifa:{" "}
-            <strong className="text-enap-dorado">
-              {tarifaClp.toLocaleString("es-CL")} CLP / {tarifaLabel}
-            </strong>
+            Modalidad de cobro:{" "}
+            <strong className="text-enap-dorado">{labelCobro}</strong>
           </li>
         </ul>
       </div>
     </motion.div>
   );
 };
+
+export default ReservaEspacioCard;

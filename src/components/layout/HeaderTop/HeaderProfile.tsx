@@ -3,12 +3,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/auth";
 import { PATHS } from "@/routes/paths";
 import { ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function HeaderProfile() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
 
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   // Cerrar dropdown al hacer click afuera
   useEffect(() => {
@@ -43,7 +45,7 @@ export default function HeaderProfile() {
           "
         >
           <button
-            onClick={() => (window.location.href = "/app/perfil")}
+            onClick={() => navigate(PATHS.SOCIO_HOME)}
             className="w-full px-4 py-2 text-left hover:bg-gray-100 text-sm"
           >
             Mi Perfil

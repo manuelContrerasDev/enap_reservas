@@ -1,5 +1,5 @@
 // ============================================================
-// PersonasForm.tsx — UX/UI Premium ENAP (Versión Final Sincronizada)
+// PersonasForm.tsx — ENAP 2025 (Auditado y sincronizado)
 // ============================================================
 
 import React from "react";
@@ -27,21 +27,27 @@ const PersonasForm: React.FC<Props> = ({
   errors,
   maxCap,
 }) => {
-  const personas = Number(watch("cantidadPersonas") ?? 1);
+  const personas = watch("cantidadPersonas") ?? 1;
 
   const clamp = (num: number) => Math.max(1, Math.min(maxCap, num));
 
   const updatePersonas = (value: number) => {
     const safe = clamp(value);
-    setValue("cantidadPersonas", safe, { shouldValidate: true, shouldDirty: true });
+    setValue("cantidadPersonas", safe, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
-  const increment = () => updatePersonas(personas + 1);
-  const decrement = () => updatePersonas(personas - 1);
+  const increment = () => updatePersonas((personas ?? 1) + 1);
+  const decrement = () => updatePersonas((personas ?? 1) - 1);
 
-  const handleChange = (val: string) => {
+  const handleInputChange = (val: string) => {
     const n = parseInt(val, 10);
-    if (isNaN(n)) return updatePersonas(1);
+    if (isNaN(n)) {
+      updatePersonas(1);
+      return;
+    }
     updatePersonas(n);
   };
 
@@ -61,7 +67,11 @@ const PersonasForm: React.FC<Props> = ({
           className={`
             w-10 h-10 flex items-center justify-center rounded-lg
             bg-gray-200 text-gray-700 text-xl font-bold transition
-            ${personas <= 1 ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"}
+            ${
+              personas <= 1
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:bg-gray-300"
+            }
           `}
         >
           −
@@ -72,9 +82,10 @@ const PersonasForm: React.FC<Props> = ({
           type="number"
           min={1}
           max={maxCap}
-          {...register("cantidadPersonas", { valueAsNumber: true })}
-          value={personas}
-          onChange={(e) => handleChange(e.target.value)}
+          {...register("cantidadPersonas", {
+            valueAsNumber: true,
+            onChange: (e) => handleInputChange(e.target.value),
+          })}
           className="
             w-full rounded-lg border px-4 py-3 text-center font-semibold
             shadow-sm focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
@@ -90,7 +101,11 @@ const PersonasForm: React.FC<Props> = ({
           className={`
             w-10 h-10 flex items-center justify-center rounded-lg
             bg-gray-200 text-gray-700 text-xl font-bold transition
-            ${personas >= maxCap ? "opacity-40 cursor-not-allowed" : "hover:bg-gray-300"}
+            ${
+              personas >= maxCap
+                ? "opacity-40 cursor-not-allowed"
+                : "hover:bg-gray-300"
+            }
           `}
         >
           +
@@ -98,7 +113,9 @@ const PersonasForm: React.FC<Props> = ({
       </div>
 
       {errors.cantidadPersonas && (
-        <p className="text-xs text-red-600">{errors.cantidadPersonas.message}</p>
+        <p className="text-xs text-red-600">
+          {errors.cantidadPersonas.message}
+        </p>
       )}
 
       <p className="text-xs text-gray-600">

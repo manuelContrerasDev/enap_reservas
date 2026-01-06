@@ -1,34 +1,35 @@
+// src/modules/espacios/components/EspaciosHeader.tsx
 import React from "react";
 import { motion } from "framer-motion";
-import { LayoutGrid, CalendarDays, ShieldCheck } from "lucide-react";
+import { LayoutGrid, CalendarDays, BadgeCheck } from "lucide-react";
+import type { Role } from "@/types/auth"; // ajusta la ruta si aplica
 
 interface Props {
-  role: "ADMIN" | "SOCIO" | "EXTERNO" | null;
+  role: Role | null;
 }
 
 export default function EspaciosHeader({ role }: Props) {
   /* ============================================================
-   * TEXTOS PERSONALIZADOS POR ROL
+   * COPY SEGÚN PERFIL (CATÁLOGO PÚBLICO)
    * ============================================================ */
-  const etiqueta =
-    role === "ADMIN"
-      ? "Panel Administrativo"
-      : role === "SOCIO"
-      ? "Portal de Socios"
-      : role === "EXTERNO"
-      ? "Portal de Usuarios Externos"
-      : "Navegación General";
+  const isSocio = role === "SOCIO";
+  const isExterno = role === "EXTERNO";
 
-  const descripcion =
-    role === "ADMIN"
-      ? "Gestiona los espacios del centro recreativo: administración total del catálogo."
-      : "Explora los espacios disponibles del centro recreativo: cabañas, quinchos y áreas recreativas.";
+  const etiqueta = isSocio
+    ? "Beneficios para Socios"
+    : isExterno
+    ? "Acceso Usuarios Externos"
+    : "Catálogo de Espacios";
 
-  const IconoEtiqueta = role === "ADMIN" ? ShieldCheck : LayoutGrid;
+  const descripcion = isSocio
+    ? "Accede a tarifas preferenciales y reserva cabañas, quinchos y piscina según tus beneficios como socio."
+    : isExterno
+    ? "Explora los espacios disponibles del centro recreativo y revisa las tarifas para usuarios externos."
+    : "Explora los espacios disponibles del centro recreativo.";
 
   return (
     <motion.header
-      initial={{ opacity: 0, y: -10 }}
+      initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45 }}
       className="
@@ -41,8 +42,7 @@ export default function EspaciosHeader({ role }: Props) {
       "
     >
       <div className="max-w-6xl mx-auto text-center space-y-4">
-
-        {/* ETIQUETA SUPERIOR */}
+        {/* ETIQUETA */}
         <span
           className="
             inline-flex items-center gap-2
@@ -51,30 +51,18 @@ export default function EspaciosHeader({ role }: Props) {
             text-[11px] uppercase tracking-wide text-white/80
           "
         >
-          <IconoEtiqueta size={14} />
+          <BadgeCheck size={14} />
           {etiqueta}
         </span>
 
-        {/* TÍTULO PRINCIPAL */}
-        <h1
-          className="
-            text-3xl md:text-4xl font-extrabold 
-            flex items-center justify-center gap-2
-          "
-        >
+        {/* TÍTULO */}
+        <h1 className="text-3xl md:text-4xl font-extrabold flex items-center justify-center gap-2">
           <CalendarDays size={26} />
-          {role === "ADMIN" ? "Gestión de Espacios" : "Espacios Disponibles"}
+          Espacios Disponibles
         </h1>
 
         {/* DESCRIPCIÓN */}
-        <p
-          className="
-            max-w-xl mx-auto
-            text-white/80
-            text-sm md:text-base
-            leading-relaxed
-          "
-        >
+        <p className="max-w-xl mx-auto text-white/80 text-sm md:text-base leading-relaxed">
           {descripcion}
         </p>
       </div>
