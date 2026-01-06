@@ -5,13 +5,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 
-import {
-  Loader2,
-  CheckCircle2,
-  ChevronRight,
-  Download,
-} from "lucide-react";
-
+import { Loader2, CheckCircle2, ChevronRight, Download } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 
@@ -26,7 +20,6 @@ import { InfoReservaCard } from "@/modules/reservas/components/preview/infoReser
 import { AsistentesList } from "@/modules/reservas/components/preview/AsistentesList";
 import { TotalCard } from "@/modules/reservas/components/preview/TotalCard";
 import { reservaPermisos } from "@/modules/reservas/utils/reservaPermisos";
-
 
 import type { ReservaDTO } from "@/types/ReservaDTO";
 import type { ReservaFrontend } from "@/types/ReservaFrontend";
@@ -51,20 +44,19 @@ export default function ReservaPreviewPage() {
   const [reserva, setReserva] = useState<ReservaFrontend | null>(null);
   const [loading, setLoading] = useState(true);
 
-
   // ============================================================
   // FETCH RESERVA (contrato backend → normalización frontend)
   // ============================================================
   const fetchReserva = useCallback(async () => {
     if (!reservaId) {
       agregarNotificacion("No se encontró la reserva.", "error");
-      navigate(PATHS.SOCIO_ESPACIOS);
+      navigate(PATHS.SOCIO_ESPACIOS, { replace: true });
       return;
     }
 
     if (!token) {
-      agregarNotificacion("Sesión expirada.", "error");
-      navigate(PATHS.AUTH_LOGIN);
+      agregarNotificacion("Sesión expirada. Inicia sesión nuevamente.", "error");
+      navigate(PATHS.AUTH_LOGIN, { replace: true });
       return;
     }
 
@@ -96,11 +88,10 @@ export default function ReservaPreviewPage() {
         total: normalizada.totalClp,
         cantidadPersonas: normalizada.cantidadPersonas,
       });
-
     } catch (err) {
       console.error("❌ Preview Error:", err);
       agregarNotificacion("Error al cargar la reserva.", "error");
-      navigate(PATHS.SOCIO_ESPACIOS);
+      navigate(PATHS.SOCIO_ESPACIOS, { replace: true });
     } finally {
       setLoading(false);
     }
@@ -121,6 +112,8 @@ export default function ReservaPreviewPage() {
       </main>
     );
   }
+
+  const puedeIrTransferencia = reservaPermisos.puedeVerTransferencia(reserva);
 
   // ============================================================
   // RENDER
@@ -146,7 +139,7 @@ export default function ReservaPreviewPage() {
             Detalle de tu Reserva
           </h1>
           <p className="text-gray-600 text-sm">
-            Revisa tu información antes de continuar al pago.
+            Revisa tu información antes de ver los datos de transferencia.
           </p>
         </header>
 
@@ -158,7 +151,7 @@ export default function ReservaPreviewPage() {
 
         <TotalCard total={reserva.totalClp} />
 
-        {/* DESCARGAR */}
+        {/* DESCARGAR (FUTURO) */}
         <button
           disabled
           className="w-full bg-gray-100 text-[#002E3E] py-3 rounded-xl font-semibold flex items-center justify-center gap-2 border cursor-not-allowed"
@@ -189,14 +182,14 @@ export default function ReservaPreviewPage() {
             </span>
           </label>
 
-          {!reservaPermisos.puedeVerTransferencia(reserva)  && (
+          {!puedeIrTransferencia && (
             <p className="text-xs text-gray-500 ml-8">
-              Esta reserva ya no está disponible para pago según su estado actual.
+              Esta reserva ya no está disponible para transferencia según su estado actual.
             </p>
           )}
         </section>
 
-        {/* PAGO */}
+        {/* CTA TRANSFERENCIA */}
         <button
           onClick={() => {
             if (!aceptaTerminos) {
@@ -207,27 +200,23 @@ export default function ReservaPreviewPage() {
               return;
             }
 
-            if (!reservaPermisos.puedeVerTransferencia(reserva)) {
-              agregarNotificacion(
-                "Esta reserva ya no permite pago.",
-                "info"
-              );
+            if (!puedeIrTransferencia) {
+              agregarNotificacion("Esta reserva ya no permite transferencia.", "info");
               return;
             }
 
             navigate(`${PATHS.RESERVA_TRANSFERENCIA}?reservaId=${reserva.id}`);
           }}
-          disabled={!aceptaTerminos || !reservaPermisos.puedeVerTransferencia(reserva)}
+          disabled={!aceptaTerminos || !puedeIrTransferencia}
           className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-            aceptaTerminos && reservaPermisos.puedeVerTransferencia(reserva)
+            aceptaTerminos && puedeIrTransferencia
               ? "bg-[#DEC01F] hover:bg-[#E5D14A] text-[#002E3E]"
               : "bg-gray-200 text-gray-500 cursor-not-allowed"
           }`}
         >
-          Continuar al Pago
+          Ver datos de transferencia
           <ChevronRight size={20} />
         </button>
-
 
         <Link
           to={PATHS.SOCIO_ESPACIOS}

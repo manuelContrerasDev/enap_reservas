@@ -1,5 +1,6 @@
 // ============================================================
-// ReservaPage.tsx — UX/UI Premium ENAP (FINAL CLEAN SYNC)
+// ReservaPage.tsx — Step 1 (Creación de Reserva)
+// ENAP 2025 · PRODUCCIÓN
 // ============================================================
 
 import React from "react";
@@ -25,13 +26,12 @@ import { PATHS } from "@/routes/paths";
 
 import type { ReservaFrontendType } from "@/validators/reserva.schema";
 
-
 const ReservaPage: React.FC = () => {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
 
   // ============================================================
-  // Hook maestro
+  // Hook maestro (carga + lógica de reserva)
   // ============================================================
   const {
     loading,
@@ -58,18 +58,29 @@ const ReservaPage: React.FC = () => {
   } = useReservaForm();
 
   // ============================================================
-  // Submit handler tipado (SIN any)
+  // Estado local submit (blindaje UX)
   // ============================================================
-  const submitHandler: SubmitHandler<ReservaFrontendType> = onSubmit;
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Submit tipado
+  const submitHandler: SubmitHandler<ReservaFrontendType> = async (data) => {
+    if (isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      await onSubmit(data);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // ============================================================
-  // Estado modal asistentes
+  // Modal asistentes
   // ============================================================
   const [modalAsistentesOpen, setModalAsistentesOpen] =
     React.useState(false);
 
   // ============================================================
-  // Datos derivados (normalizados)
+  // Datos derivados
   // ============================================================
   const cantidadPersonas = watch("cantidadPersonas") ?? 0;
   const cantidadPersonasPiscina = watch("cantidadPersonasPiscina") ?? 0;
@@ -87,9 +98,9 @@ const ReservaPage: React.FC = () => {
   );
 
   // ============================================================
-  // Loading / Error
+  // Loading / Error inicial
   // ============================================================
-  if (loading) {
+  if (loading && !espacio) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-[#002E3E]">
         <Loader2 className="animate-spin" size={48} />
@@ -253,20 +264,20 @@ const ReservaPage: React.FC = () => {
               {/* SUBMIT */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isSubmitting}
                 className={`w-full py-4 rounded-lg font-bold text-white bg-[#002E3E] ${
-                  loading
+                  isSubmitting
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-[#01384A]"
                 }`}
               >
-                {loading ? (
+                {isSubmitting ? (
                   <span className="flex items-center gap-2 justify-center">
                     <Loader2 className="animate-spin" size={20} />
                     Enviando…
                   </span>
                 ) : (
-                  "Confirmar Reserva"
+                  "Confirmar reserva"
                 )}
               </button>
             </motion.div>

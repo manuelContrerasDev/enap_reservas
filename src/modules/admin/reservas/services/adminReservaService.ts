@@ -1,5 +1,5 @@
 // src/services/adminReservaService.ts
-import { api } from "@/lib/api";
+import { api } from "@/lib/axios";
 import { ApiResponse } from "@/types/api";
 import {
   ReservaManualBackendPayload,

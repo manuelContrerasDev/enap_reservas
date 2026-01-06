@@ -1,5 +1,5 @@
 // =====================================================================
-// useReservaForm.ts — Hook maestro del flujo ENAP (FINAL / SYNC)
+// useReservaForm.ts — Hook maestro del flujo ENAP (PRODUCTION READY)
 // =====================================================================
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -43,8 +43,6 @@ import {
 import type { BloqueFecha } from "@/modules/reservas/utils/validarFechas";
 import { useReservaValidator } from "@/modules/reservas/hooks/useReservaValidator";
 
-// ------------------------------------------------------------
-
 export function useReservaForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -57,7 +55,13 @@ export function useReservaForm() {
   const [espacio, setEspacio] = useState<EspacioDTO | null>(null);
   const [bloquesOcupados, setBloquesOcupados] = useState<BloqueFecha[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // ✅ Separación real de estados de carga
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ Compatibilidad: tu ReservaPage usa `loading`
+  const loading = isPageLoading || isSubmitting;
 
   const today = useMemo(() => ymdLocal(new Date()), []);
 
@@ -114,13 +118,15 @@ export function useReservaForm() {
   const fetchEspacio = useCallback(async () => {
     if (!id) {
       setError("Espacio no encontrado");
-      setLoading(false);
+      setIsPageLoading(false);
       return;
     }
 
     try {
+      // Limpieza de draft previo SOLO al entrar a un espacio
       localStorage.removeItem(FORM_KEY_RESERVA);
-      setLoading(true);
+
+      setIsPageLoading(true);
       setError(null);
 
       const { espacio, bloquesOcupados } = await fetchEspacioCompleto(id, {
@@ -138,6 +144,7 @@ export function useReservaForm() {
       setEspacio(espacio);
       setBloquesOcupados(bloquesOcupados);
 
+      // Sync con contexto (wizard)
       setReservaActual({
         espacioId: espacio.id,
         espacioNombre: espacio.nombre,
@@ -150,16 +157,22 @@ export function useReservaForm() {
       setEspacio(null);
       setBloquesOcupados([]);
     } finally {
-      setLoading(false);
+      setIsPageLoading(false);
     }
-  }, [id, obtenerEspacio, obtenerDisponibilidad, setReservaActual, setValue]);
+  }, [
+    id,
+    obtenerEspacio,
+    obtenerDisponibilidad,
+    setReservaActual,
+    setValue,
+  ]);
 
   useEffect(() => {
     fetchEspacio();
   }, [fetchEspacio]);
 
   // ============================================================
-  // Prefill socio
+  // Prefill socio (sin asumir estructura extendida)
   // ============================================================
 
   useEffect(() => {
@@ -169,8 +182,9 @@ export function useReservaForm() {
     setValue("correoEnap", user.email ?? "", { shouldValidate: true });
     setValue("correoPersonal", user.email ?? null, { shouldValidate: true });
 
-    if ((user as any).rut) setValue("rutSocio", (user as any).rut);
-    if ((user as any).telefono) setValue("telefonoSocio", (user as any).telefono);
+    const u: any = user;
+    if (u?.rut) setValue("rutSocio", u.rut, { shouldValidate: true });
+    if (u?.telefono) setValue("telefonoSocio", u.telefono, { shouldValidate: true });
   }, [user, setValue]);
 
   // ============================================================
@@ -180,20 +194,32 @@ export function useReservaForm() {
   const maxCap = useMemo(() => calcularCapacidad(espacio), [espacio]);
 
   // ============================================================
-  // Cálculo total (inputs SIEMPRE definidos)
+  // Watch values (para memo estable)
   // ============================================================
 
-  const calculoInput: ReservaCalculoInput = {
-    usoReserva: watch("usoReserva"),
-    cantidadPersonas: watch("cantidadPersonas"),
-    cantidadPersonasPiscina: watch("cantidadPersonasPiscina") ?? 0, // ✅ FIX
-    invitados: (watch("invitados") ?? []).map((i) => ({
-      nombre: i.nombre,
-      rut: i.rut,
-      edad: i.edad,
-      esPiscina: i.esPiscina ?? false,
-    })),
-  };
+  const usoReserva = watch("usoReserva");
+  const cantidadPersonas = watch("cantidadPersonas");
+  const cantidadPersonasPiscina = watch("cantidadPersonasPiscina") ?? 0;
+  const invitadosWatch = watch("invitados") ?? [];
+
+  // ============================================================
+  // Cálculo total (estable + inputs definidos)
+  // ============================================================
+
+  const calculoInput: ReservaCalculoInput = useMemo(
+    () => ({
+      usoReserva,
+      cantidadPersonas,
+      cantidadPersonasPiscina,
+      invitados: invitadosWatch.map((i: any) => ({
+        nombre: i.nombre,
+        rut: i.rut,
+        edad: i.edad,
+        esPiscina: i.esPiscina ?? false,
+      })),
+    }),
+    [usoReserva, cantidadPersonas, cantidadPersonasPiscina, invitadosWatch]
+  );
 
   const { dias, valorEspacio, pagoPersonas, pagoPiscina, total } = useMemo(() => {
     if (!espacio || !fechaInicio || !fechaFin) {
@@ -232,7 +258,15 @@ export function useReservaForm() {
       dias,
       total,
     });
-  }, [espacio, fechaInicio, fechaFin, dias, total, setReservaActual, calculoInput]);
+  }, [
+    espacio,
+    fechaInicio,
+    fechaFin,
+    dias,
+    total,
+    setReservaActual,
+    calculoInput.cantidadPersonas,
+  ]);
 
   // ============================================================
   // Validación negocio
@@ -246,38 +280,55 @@ export function useReservaForm() {
   });
 
   // ============================================================
-  // Submit (parse + fechas ISO + map payload backend)
+  // Submit (parse + fechas ISO + payload backend)
   // ============================================================
 
   const onSubmit = async (data: ReservaFormData) => {
     if (!espacio) return;
 
+    // Gate: evita doble submit
+    if (isSubmitting) return;
+
     if (!validar(data)) return;
 
-    // 1️⃣ Validación frontend (shape correcto)
-    const parsed: ReservaFrontendParsed = reservaFrontendSchema.parse(data);
+    try {
+      setIsSubmitting(true);
 
-    // 2️⃣ 🔥 CONVERSIÓN A ISO (FIX DEFINITIVO)
-    const parsedConFechasISO: ReservaFrontendParsed = {
-      ...parsed,
-      fechaInicio: new Date(parsed.fechaInicio).toISOString(),
-      fechaFin: new Date(parsed.fechaFin).toISOString(),
-    };
+      // 1️⃣ Validación frontend (shape correcto)
+      const parsed: ReservaFrontendParsed = reservaFrontendSchema.parse(data);
 
-    // 3️⃣ Map exacto al contrato backend
-    const payload: CrearReservaPayload = mapCrearReservaPayload(
-      parsedConFechasISO,
-      espacio.id
-    );
+      // 2️⃣ Fechas: construir local midnight y luego ISO (DST safe)
+      const toIsoLocalMidnight = (ymd: string) =>
+        new Date(`${ymd}T00:00:00`).toISOString();
 
-    // 4️⃣ Envío al backend
-    const reservaId = await crearReservaEnServidor(payload);
-    if (!reservaId) return;
+      const parsedConFechasISO: ReservaFrontendParsed = {
+        ...parsed,
+        fechaInicio: toIsoLocalMidnight(parsed.fechaInicio),
+        fechaFin: toIsoLocalMidnight(parsed.fechaFin),
+      };
 
-    agregarNotificacion("Reserva creada correctamente", "success");
-    navigate(`${PATHS.RESERVA_PREVIEW}?reservaId=${reservaId}`);
+      // 3️⃣ Map exacto al contrato backend
+      const payload: CrearReservaPayload = mapCrearReservaPayload(
+        parsedConFechasISO,
+        espacio.id
+      );
+
+      // 4️⃣ Envío al backend
+      const reservaId = await crearReservaEnServidor(payload);
+      if (!reservaId) return;
+
+      agregarNotificacion("Reserva creada correctamente", "success");
+      navigate(`${PATHS.RESERVA_PREVIEW}?reservaId=${reservaId}`);
+    } catch (e: any) {
+      console.error("❌ onSubmit reserva:", e);
+      agregarNotificacion(
+        e?.message ?? "No se pudo crear la reserva. Intenta nuevamente.",
+        "error"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
 
   // ============================================================
   // Autosave
@@ -293,7 +344,12 @@ export function useReservaForm() {
   // ============================================================
 
   return {
+    // ✅ compat
     loading,
+    // ✅ estados reales
+    isPageLoading,
+    isSubmitting,
+
     error,
     espacio,
     bloquesOcupados,

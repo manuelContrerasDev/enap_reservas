@@ -4,6 +4,7 @@ import { UsoReserva } from "@/types/enums";
 /* ============================================================
  * HELPERS
  * ============================================================ */
+
 const emailSchema = z
   .string()
   .min(5, "Correo requerido")
@@ -18,13 +19,18 @@ const telSchema = z.string().trim().min(8, "Teléfono requerido");
 
 /* ============================================================
  * SCHEMA PRINCIPAL — FRONT → BACK (OFICIAL ENAP)
+ * ============================================================
+ * ✅ Input: react-hook-form + zodResolver
+ * ✅ Output: parse() normaliza y asegura consistencia
+ * ⚠️ Reglas de negocio complejas (bloques ocupados, cupos, etc.)
+ *    se validan además en useReservaValidator + backend.
  * ============================================================ */
 export const reservaFrontendSchema = z
   .object({
     /* ---------------- Identificación ---------------- */
     espacioId: z.string().min(1, "ID requerido"),
 
-    /* ---------------- Fechas ---------------- */
+    /* ---------------- Fechas (YYYY-MM-DD) ---------------- */
     fechaInicio: z.string().min(10, "Fecha inicio requerida"),
     fechaFin: z.string().min(10, "Fecha fin requerida"),
 
@@ -69,31 +75,30 @@ export const reservaFrontendSchema = z
   })
 
   /* ============================================================
-   * VALIDACIONES
+   * VALIDACIONES (P0: DST Safe)
+   * ============================================================
+   * ⚠️ Evitamos `new Date("YYYY-MM-DD")` por bugs de timezone/DST.
+   * Como las fechas vienen en formato ISO local (YYYY-MM-DD),
+   * la comparación lexicográfica funciona perfectamente.
+   */
+  .refine((data) => data.fechaFin > data.fechaInicio, {
+    message: "La fecha de fin debe ser posterior a la fecha de inicio",
+    path: ["fechaFin"],
+  })
+
+  /* ============================================================
+   * VALIDACIONES ESTRUCTURALES
    * ============================================================ */
-
-  // Fechas válidas
-  .refine(
-    (data) => new Date(data.fechaFin) > new Date(data.fechaInicio),
-    {
-      message: "La fecha de fin debe ser posterior a la fecha de inicio",
-      path: ["fechaFin"],
-    }
-  )
-
-  // Reglas estructurales
   .superRefine((data, ctx) => {
     /* ---------- Responsable ---------- */
     if (data.socioPresente) {
+      // Si el socio está presente, se limpian campos responsables.
       data.nombreResponsable = null;
       data.rutResponsable = null;
       data.emailResponsable = null;
     } else {
-      if (
-        !data.nombreResponsable ||
-        !data.rutResponsable ||
-        !data.emailResponsable
-      ) {
+      // Si socio NO está presente, responsable es obligatorio.
+      if (!data.nombreResponsable || !data.rutResponsable || !data.emailResponsable) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Debes completar los datos del responsable",
@@ -103,9 +108,7 @@ export const reservaFrontendSchema = z
     }
 
     /* ---------- Piscina ---------- */
-    const piscinaMarcados = data.invitados.filter(
-      (i) => i.esPiscina
-    ).length;
+    const piscinaMarcados = data.invitados.filter((i) => i.esPiscina).length;
 
     if (piscinaMarcados > data.cantidadPersonasPiscina) {
       ctx.addIssue({

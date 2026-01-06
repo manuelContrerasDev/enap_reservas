@@ -19,8 +19,8 @@ export function useReservasSocio() {
     try {
       setLoading(true);
 
-      // ✅ tu backend tiene /api/reservas/mias
-      const resp = await fetch(`${API_URL}/api/reservas/mias`, {
+      // ✅ tu backend tiene /api/reservas/mis-reservas
+      const resp = await fetch(`${API_URL}/api/reservas/mis-reservas`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

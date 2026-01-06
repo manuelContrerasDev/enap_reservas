@@ -2,11 +2,13 @@
 import React from "react";
 import SidebarItem from "./SidebarItem";
 
-export default function SidebarSection({
-  items,
-}: {
-  items: { label: string; path: string; icon: any }[];
-}) {
+interface Item {
+  label: string;
+  path: string;
+  icon: React.ElementType;
+}
+
+export default function SidebarSection({ items }: { items: Item[] }) {
   return (
     <div className="space-y-1">
       {items.map((item) => (

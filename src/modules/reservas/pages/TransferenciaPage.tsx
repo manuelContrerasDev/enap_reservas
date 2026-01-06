@@ -1,29 +1,120 @@
 // ============================================================
-// TransferenciaPage.tsx — Paso Final (Pago Manual)
+// TransferenciaPage.tsx — Step 3 (Transferencia Manual)
 // ENAP 2026 · PRODUCCIÓN
 // ============================================================
 
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
-import { ArrowLeft, Info } from "lucide-react";
+import { ArrowLeft, Info, Loader2 } from "lucide-react";
 
 import CheckoutProgress from "@/components/ui/CheckoutProgress";
 import { useReserva } from "@/context/ReservaContext";
+import { useNotificacion } from "@/context/NotificacionContext";
+import { useAuth } from "@/context/auth";
 import { PATHS } from "@/routes/paths";
+
+import type { ReservaDTO } from "@/types/ReservaDTO";
+import { normalizarReserva } from "@/utils/normalizarReserva";
 
 // ✅ Imagen oficial desde assets
 import datosTransferencia from "@/assets/datosTransferencia.png";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export default function TransferenciaPage() {
   const navigate = useNavigate();
-  const { reservaActual } = useReserva();
+  const [params] = useSearchParams();
 
-  /* ============================================================
-   * GUARD — acceso directo no permitido
-   * ============================================================ */
-  if (!reservaActual) {
+  const { reservaActual, setReservaActual } = useReserva();
+  const { agregarNotificacion } = useNotificacion();
+  const { token } = useAuth();
+
+  const reservaId = params.get("reservaId");
+
+  const [loading, setLoading] = useState(false);
+
+  const tieneDraft = !!reservaActual;
+
+  const totalFmt = useMemo(() => {
+    if (typeof reservaActual?.total !== "number") return null;
+    return reservaActual.total.toLocaleString("es-CL");
+  }, [reservaActual?.total]);
+
+  // ============================================================
+  // Fetch reserva (solo si entran por link/refresh sin draft)
+  // ============================================================
+  const hydrateFromServer = useCallback(async () => {
+    if (tieneDraft) return;
+
+    if (!reservaId) return; // sin id, no se puede hidratar
+
+    if (!token) {
+      agregarNotificacion("Sesión expirada. Inicia sesión nuevamente.", "error");
+      navigate(PATHS.AUTH_LOGIN, { replace: true });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const resp = await fetch(`${API_URL}/api/reservas/${reservaId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const json = await resp.json();
+
+      if (!resp.ok || json.ok === false) {
+        throw new Error(json.error || "Error al cargar la reserva");
+      }
+
+      const dto: ReservaDTO = json.data;
+      const normal = normalizarReserva(dto);
+
+      // Hydrate draft mínimo (wizard-safe)
+      setReservaActual({
+        espacioId: normal.espacioId ?? undefined,
+        espacioNombre: normal.espacioNombre,
+        fechaInicio: normal.fechaInicio,
+        fechaFin: normal.fechaFin,
+        dias: normal.dias,
+        total: normal.totalClp,
+        cantidadPersonas: normal.cantidadPersonas,
+      });
+    } catch (e) {
+      console.error("❌ Transferencia hydrate:", e);
+      agregarNotificacion("No se pudo cargar la información de la reserva.", "error");
+      navigate(PATHS.SOCIO_ESPACIOS, { replace: true });
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    tieneDraft,
+    reservaId,
+    token,
+    agregarNotificacion,
+    navigate,
+    setReservaActual,
+  ]);
+
+  useEffect(() => {
+    hydrateFromServer();
+  }, [hydrateFromServer]);
+
+  // ============================================================
+  // Guard final — si no hay draft y no se puede hidratar
+  // ============================================================
+  if (!tieneDraft) {
+    if (loading) {
+      return (
+        <main className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+          <Loader2 className="animate-spin text-[#002E3E]" size={44} />
+          <p className="text-gray-600 text-sm mt-3">Cargando información…</p>
+        </main>
+      );
+    }
+
     return (
       <main className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
         <p className="text-gray-600 mb-4">
@@ -39,13 +130,13 @@ export default function TransferenciaPage() {
     );
   }
 
-  /* ============================================================
-   * RENDER
-   * ============================================================ */
+  // ============================================================
+  // RENDER
+  // ============================================================
   return (
     <main className="bg-[#F2F4F7] min-h-screen flex flex-col items-center px-4 pt-2 pb-10">
       <Helmet>
-        <title>Pago por Transferencia | ENAP</title>
+        <title>Transferencia | ENAP</title>
       </Helmet>
 
       <CheckoutProgress step={3} />
@@ -60,7 +151,7 @@ export default function TransferenciaPage() {
         <header className="text-center space-y-2">
           <Info className="mx-auto text-[#005D73]" size={42} />
           <h1 className="text-2xl font-extrabold text-[#002E3E]">
-            Pago por Transferencia
+            Transferencia Bancaria
           </h1>
           <p className="text-gray-600 text-sm">
             Tu reserva quedó registrada como{" "}
@@ -76,15 +167,14 @@ export default function TransferenciaPage() {
 
           {reservaActual.fechaInicio && reservaActual.fechaFin && (
             <p>
-              <strong>Fechas:</strong>{" "}
-              {reservaActual.fechaInicio} → {reservaActual.fechaFin}
+              <strong>Fechas:</strong> {reservaActual.fechaInicio} →{" "}
+              {reservaActual.fechaFin}
             </p>
           )}
 
-          {typeof reservaActual.total === "number" && (
+          {totalFmt && (
             <p className="text-lg font-bold text-[#002E3E]">
-              Total a pagar: $
-              {reservaActual.total.toLocaleString("es-CL")}
+              Total a pagar: ${totalFmt}
             </p>
           )}
         </section>

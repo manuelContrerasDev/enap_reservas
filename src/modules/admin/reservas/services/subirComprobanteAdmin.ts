@@ -1,5 +1,5 @@
 // src/modules/admin/reservas/services/subirComprobanteAdmin.ts
-import { api } from "@/lib/api";
+import { api } from "@/lib/axios";
 
 type Payload = {
   comprobanteUrl: string;

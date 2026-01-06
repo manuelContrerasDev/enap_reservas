@@ -1,43 +1,103 @@
+// src/modules/reservas/pages/MisReservasPage.tsx
 import React from "react";
 import { motion } from "framer-motion";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, XCircle, Pencil, Landmark, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { useReservasSocio } from "@/modules/reservas/hooks/useReservasSocio";
+import { useNotificacion } from "@/context/NotificacionContext";
+import { useAuth } from "@/context/auth";
+
 import { clp } from "@/lib/format";
-import { useNavigate } from "react-router-dom";
-import { ReservaEstado } from "@/types/enums";
+import { PATHS } from "@/routes/paths";
 import { reservaPermisos } from "@/modules/reservas/utils/reservaPermisos";
 
-import ModalEditarReserva from "@/modules/admin/reservas/components/modals/ModalEditarReserva";
-import { editarReserva } from "@/modules/admin/reservas/services/editarReserva";
-import { useNotificacion } from "@/context/NotificacionContext";
-import type { ReservaFrontend } from "@/types/BuscarReservaFrontend";
+import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import ModalEditarInvitados from "@/modules/admin/reservas/components/modals/ModalEditarInvitados";
+
+import { editarInvitadosSocio } from "@/modules/reservas/services/editarInvitadosSocio";
+import { cancelarReservaSocio } from "@/modules/reservas/services/cancelarReservaSocio";
 
 export default function MisReservasPage() {
   const { reservas, loading, reload } = useReservasSocio();
   const { agregarNotificacion } = useNotificacion();
-  const [filtro, setFiltro] = React.useState("");
+  const { token } = useAuth();
   const navigate = useNavigate();
 
-  const [reservaEditando, setReservaEditando] =
-    React.useState<ReservaFrontend | null>(null);
+  const [filtro, setFiltro] = React.useState("");
+  const [reservaEditando, setReservaEditando] = React.useState<ReservaFrontend | null>(null);
   const [guardando, setGuardando] = React.useState(false);
 
-  const filtered = reservas.filter((r) =>
-    r.espacioNombre.toLowerCase().includes(filtro.toLowerCase())
-  );
+  const filtered = React.useMemo(() => {
+    const q = filtro.trim().toLowerCase();
+    if (!q) return reservas;
+    return reservas.filter((r) => (r.espacioNombre ?? "").toLowerCase().includes(q));
+  }, [reservas, filtro]);
 
-  const handleGuardarEdicion = async (payload: any) => {
+  const irADetalle = (id: string) => {
+    navigate(`${PATHS.RESERVA_PREVIEW}?reservaId=${id}`);
+  };
+
+  const irATransferencia = (id: string) => {
+    navigate(`${PATHS.RESERVA_TRANSFERENCIA}?reservaId=${id}`);
+  };
+
+  const handleGuardarInvitados = async (invitados: any[]) => {
     if (!reservaEditando) return;
+    if (!token) {
+      agregarNotificacion("Sesión expirada.", "error");
+      navigate(PATHS.AUTH_LOGIN);
+      return;
+    }
 
     try {
       setGuardando(true);
-      await editarReserva(reservaEditando.id, payload);
-      agregarNotificacion("Reserva actualizada correctamente", "success");
+
+      // Enviamos solo campos necesarios al backend (sin ids temporales)
+      const payload = {
+        invitados: invitados.map((i) => ({
+          nombre: String(i.nombre ?? "").trim(),
+          rut: String(i.rut ?? "").trim(),
+          edad: i.edad ?? null,
+          esPiscina: Boolean(i.esPiscina),
+        })),
+      };
+
+      const result = await editarInvitadosSocio(token, reservaEditando.id, payload);
+
+      if (!result.ok) throw new Error(result.error);
+
+      agregarNotificacion("Invitados actualizados correctamente.", "success");
       setReservaEditando(null);
-      reload();
+      await reload();
     } catch (err: any) {
-      agregarNotificacion(err.message ?? "Error al editar la reserva", "error");
+      agregarNotificacion(err?.message ?? "Error al actualizar invitados", "error");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleCancelar = async (r: ReservaFrontend) => {
+    if (!token) {
+      agregarNotificacion("Sesión expirada.", "error");
+      navigate(PATHS.AUTH_LOGIN);
+      return;
+    }
+
+    const ok = window.confirm(
+      "¿Confirmas cancelar esta reserva?\n\nEsto liberará el cupo y no se podrá revertir."
+    );
+    if (!ok) return;
+
+    try {
+      setGuardando(true);
+      const result = await cancelarReservaSocio(token, r.id, { motivo: "Cancelación por usuario" });
+      if (!result.ok) throw new Error(result.error);
+
+      agregarNotificacion("Reserva cancelada correctamente.", "success");
+      await reload();
+    } catch (err: any) {
+      agregarNotificacion(err?.message ?? "Error al cancelar la reserva", "error");
     } finally {
       setGuardando(false);
     }
@@ -49,11 +109,16 @@ export default function MisReservasPage() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="max-w-4xl mx-auto"
+        className="max-w-5xl mx-auto"
       >
-        <h1 className="text-3xl font-extrabold text-[#002E3E] mb-4">
-          Mis Reservas
-        </h1>
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-5">
+          <div>
+            <h1 className="text-3xl font-extrabold text-[#002E3E]">Mis Reservas</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Revisa tu historial, actualiza invitados o ve datos de transferencia.
+            </p>
+          </div>
+        </header>
 
         {/* Buscador */}
         <div className="relative mb-6">
@@ -98,9 +163,7 @@ export default function MisReservasPage() {
                   <tr key={r.id} className="border-t">
                     <td className="px-4 py-4">
                       <strong>{r.espacioNombre}</strong>
-                      <div className="text-xs text-gray-500">
-                        {r.espacioTipo ?? ""}
-                      </div>
+                      <div className="text-xs text-gray-500">{r.espacioTipo ?? ""}</div>
                     </td>
 
                     <td className="text-center px-4 py-4">
@@ -109,49 +172,57 @@ export default function MisReservasPage() {
                       {new Date(r.fechaFin).toLocaleDateString("es-CL")}
                     </td>
 
-                    <td className="text-center px-4 py-4">
-                      {r.cantidadPersonas}
-                    </td>
+                    <td className="text-center px-4 py-4">{r.cantidadPersonas}</td>
 
-                    <td className="text-center px-4 py-4">
-                      {clp(r.totalClp)}
-                    </td>
+                    <td className="text-center px-4 py-4">{clp(r.totalClp)}</td>
 
                     <td className="text-center px-4 py-4">
                       <span className="px-2 py-1 rounded text-xs font-bold bg-gray-200 text-gray-700">
-                        {r.estado.replace("_", " ")}
+                        {String(r.estado).replaceAll("_", " ")}
                       </span>
                     </td>
 
-                    <td className="text-center px-4 py-4 space-x-2">
-                      <button
-                        onClick={() =>
-                          navigate(`/reserva/preview?reservaId=${r.id}`)
-                        }
-                        className="px-3 py-1 rounded bg-[#002E3E] text-white text-xs"
-                      >
-                        Ver
-                      </button>
-
-                      {reservaPermisos.puedeEditarReserva(r) && (
+                    <td className="text-center px-4 py-4">
+                      <div className="flex flex-wrap items-center justify-center gap-2">
                         <button
-                          onClick={() => setReservaEditando(r)}
-                          className="px-3 py-1 rounded bg-blue-600 text-white text-xs"
+                          onClick={() => irADetalle(r.id)}
+                          className="px-3 py-1.5 rounded bg-[#002E3E] text-white text-xs flex items-center gap-1"
+                          title="Ver detalle"
                         >
-                          Editar
+                          <Eye size={14} /> Ver
                         </button>
-                      )}
 
-                      {reservaPermisos.puedePagar(r) && (
-                        <button
-                          onClick={() =>
-                            navigate(`/pago?reservaId=${r.id}`)
-                          }
-                          className="px-3 py-1 rounded bg-[#DEC01F] text-black text-xs"
-                        >
-                          Pagar
-                        </button>
-                      )}
+                        {reservaPermisos.puedeVerTransferencia(r) && (
+                          <button
+                            onClick={() => irATransferencia(r.id)}
+                            className="px-3 py-1.5 rounded bg-[#DEC01F] text-black text-xs flex items-center gap-1"
+                            title="Ver transferencia"
+                          >
+                            <Landmark size={14} /> Transferencia
+                          </button>
+                        )}
+
+                        {reservaPermisos.puedeEditarInvitados(r) && (
+                          <button
+                            onClick={() => setReservaEditando(r)}
+                            className="px-3 py-1.5 rounded bg-blue-600 text-white text-xs flex items-center gap-1"
+                            title="Editar invitados"
+                          >
+                            <Pencil size={14} /> Invitados
+                          </button>
+                        )}
+
+                        {reservaPermisos.puedeCancelar(r) && (
+                          <button
+                            onClick={() => handleCancelar(r)}
+                            disabled={guardando}
+                            className="px-3 py-1.5 rounded bg-red-600 text-white text-xs flex items-center gap-1 disabled:opacity-60"
+                            title="Cancelar reserva"
+                          >
+                            <XCircle size={14} /> Cancelar
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -162,11 +233,11 @@ export default function MisReservasPage() {
       </motion.div>
 
       {reservaEditando && (
-        <ModalEditarReserva
+        <ModalEditarInvitados
           reserva={reservaEditando}
           loading={guardando}
           onClose={() => setReservaEditando(null)}
-          onGuardar={handleGuardarEdicion}
+          onGuardar={handleGuardarInvitados}
         />
       )}
     </main>

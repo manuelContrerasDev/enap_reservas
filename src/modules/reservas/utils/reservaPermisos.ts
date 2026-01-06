@@ -1,33 +1,31 @@
+// src/modules/reservas/utils/reservaPermisos.ts
 import type { ReservaFrontend } from "@/types/ReservaFrontend";
 import { ReservaEstado } from "@/types/enums";
 
 /**
  * Permisos de acciones del SOCIO sobre su reserva
- * Flujo ENAP 2025 (SIN pagos online)
+ * Flujo ENAP 2026 (pagos online congelados → transferencia manual)
+ *
+ * Nota:
+ * - Frontend controla UX (botones/acciones).
+ * - Backend es autoridad final (seguridad real).
  */
 export const reservaPermisos = {
-  /**
-   * Editar invitados (antes de pagar)
-   */
+  /** Ver detalle / preview (siempre permitido) */
+  puedeVerDetalle: (_r: ReservaFrontend) => true,
+
+  /** Editar invitados (solo antes de validación/pago manual) */
   puedeEditarInvitados: (r: ReservaFrontend) =>
     r.estado === ReservaEstado.PENDIENTE_PAGO,
 
-  /**
-   * Ver instrucciones de pago / transferencia
-   * (antes: Webpay, ahora: datos bancarios)
-   */
+  /** Ver instrucciones de transferencia (Step 3) */
   puedeVerTransferencia: (r: ReservaFrontend) =>
     r.estado === ReservaEstado.PENDIENTE_PAGO,
 
-  /**
-   * Cancelar reserva propia
-   */
+  /** Cancelar reserva (la regla de 24h la valida backend; aquí UX base por estado) */
   puedeCancelar: (r: ReservaFrontend) =>
     r.estado === ReservaEstado.PENDIENTE_PAGO,
 
-  /**
-   * Solo lectura (preview)
-   */
-  esSoloLectura: (r: ReservaFrontend) =>
-    r.estado !== ReservaEstado.PENDIENTE_PAGO,
+  /** Solo lectura */
+  esSoloLectura: (r: ReservaFrontend) => r.estado !== ReservaEstado.PENDIENTE_PAGO,
 };

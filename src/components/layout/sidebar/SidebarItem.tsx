@@ -5,13 +5,14 @@ import { NavLink } from "react-router-dom";
 interface Props {
   label: string;
   path: string;
-  icon: any;
+  icon: React.ElementType;
 }
 
 export default function SidebarItem({ label, path, icon: Icon }: Props) {
   return (
     <NavLink
       to={path}
+      end
       className={({ isActive }) =>
         `
         group flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium
