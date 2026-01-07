@@ -1,6 +1,6 @@
 // src/modules/espacios/hooks/useDisponibilidadEspacios.ts
 import { useCallback, useEffect, useState } from "react";
-import { fechaLocal } from "@/utils/fechaLocal";
+import { fechaLocal } from "@/shared/lib/date";
 import type { EspacioDTO } from "@/types/espacios";
 
 /* ============================================================
@@ -36,8 +36,7 @@ export function useDisponibilidadEspacios({
 }: UseDisponibilidadOptions) {
   const [fechaFiltro, setFechaFiltro] = useState<string | null>(null);
   const [soloDisponibles, setSoloDisponibles] = useState(false);
-  const [loadingDisponibilidad, setLoadingDisponibilidad] =
-    useState(false);
+  const [loadingDisponibilidad, setLoadingDisponibilidad] = useState(false);
 
   const [disponibilidadMap, setDisponibilidadMap] = useState<
     Record<string, BloqueFecha[]>
@@ -135,8 +134,6 @@ export function useDisponibilidadEspacios({
       return bloques.some((b) => {
         const inicio = normalizarFecha(b.fechaInicio);
         const fin = normalizarFecha(b.fechaFin);
-
-        // Regla correcta → intervalo [inicio, fin)
         return target >= inicio && target < fin;
       });
     },
@@ -147,11 +144,10 @@ export function useDisponibilidadEspacios({
    * Contador global por fecha (calendario)
    * ---------------------------------------------------------- */
   const contarOcupadosEnFecha = useCallback(
-    (fechaISO: string) => {
-      return espacios.filter((esp) =>
+    (fechaISO: string) =>
+      espacios.filter((esp) =>
         estaOcupadoEnFecha(esp.id, fechaISO)
-      ).length;
-    },
+      ).length,
     [espacios, estaOcupadoEnFecha]
   );
 
