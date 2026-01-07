@@ -27,7 +27,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UsoReserva } from "@/types/enums";
 
-import { fetchEspacioCompleto } from "@/modules/reservas/services/fetchEspacio";
+import { getEspacioConDisponibilidad } 
+  from "@/modules/reservas/api/getEspacioConDisponibilidad";
+
 import { calcularCapacidad } from "@/modules/reservas/utils/calcularCapacidad";
 import {
   calcularTotalesReserva,
@@ -129,7 +131,7 @@ export function useReservaForm() {
       setIsPageLoading(true);
       setError(null);
 
-      const { espacio, bloquesOcupados } = await fetchEspacioCompleto(id, {
+      const { espacio, bloquesOcupados } = await getEspacioConDisponibilidad(id, {
         obtenerEspacio,
         obtenerDisponibilidad,
       });

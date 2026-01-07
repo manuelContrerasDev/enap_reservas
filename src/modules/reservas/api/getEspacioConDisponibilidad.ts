@@ -1,26 +1,25 @@
-// src/modules/reservas/services/fetchEspacio.ts
 import type { EspacioDTO } from "@/types/espacios";
 import type { BloqueFecha } from "../utils/validarFechas";
 
-interface FetchDeps {
+interface Deps {
   obtenerEspacio: (id: string) => Promise<EspacioDTO | null>;
   obtenerDisponibilidad: (id: string) => Promise<BloqueFecha[] | null>;
 }
 
-export async function fetchEspacioCompleto(
+export async function getEspacioConDisponibilidad(
   id: string,
-  { obtenerEspacio, obtenerDisponibilidad }: FetchDeps
+  deps: Deps
 ): Promise<{
   espacio: EspacioDTO | null;
   bloquesOcupados: BloqueFecha[];
 }> {
   const [espacio, bloques] = await Promise.all([
-    obtenerEspacio(id),
-    obtenerDisponibilidad(id),
+    deps.obtenerEspacio(id),
+    deps.obtenerDisponibilidad(id),
   ]);
 
   return {
-    espacio: espacio ?? null,
+    espacio,
     bloquesOcupados: bloques ?? [],
   };
 }

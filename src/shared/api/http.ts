@@ -1,5 +1,3 @@
-// Placeholder — http client único
-export {};
 // src/shared/api/http.ts
 
 export class HttpError extends Error {
@@ -21,17 +19,16 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export async function http<T>(
   endpoint: string,
-  { auth = true, headers, ...options }: HttpOptions = {}
+  { auth = true, ...options }: HttpOptions = {}
 ): Promise<T> {
-  const finalHeaders: HeadersInit = {
+  const finalHeaders: Record<string, string> = {
     "Content-Type": "application/json",
-    ...headers,
   };
 
   if (auth) {
     const token = localStorage.getItem("token");
     if (token) {
-      finalHeaders.Authorization = `Bearer ${token}`;
+      finalHeaders["Authorization"] = `Bearer ${token}`;
     }
   }
 

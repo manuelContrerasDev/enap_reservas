@@ -1,5 +1,3 @@
-// Placeholder — formatters globales
-export {};
 // src/shared/lib/format.ts
 
 export function formatCLP(value: number): string {
