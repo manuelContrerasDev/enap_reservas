@@ -1,4 +1,5 @@
-import { api } from "@/lib/axios";
+// src/context/auth/services/auth.api.ts
+import { http, HttpError } from "@/shared/api/http";
 import {
   LoginResponse,
   RegisterResponse,
@@ -32,12 +33,11 @@ export const authApi = {
    * ============================================================ */
   async login(email: string, password: string): Promise<LoginResult> {
     try {
-      const resp = await api.post<LoginResponse>("/auth/login", {
-        email,
-        password,
+      const data = await http<LoginResponse>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+        auth: false, // 👈 login NO requiere token
       });
-
-      const data = resp.data;
 
       if (data.ok && data.user && data.token) {
         const user: User = normalizeUser(data.user);
@@ -48,14 +48,18 @@ export const authApi = {
         ok: false,
         error: mapLoginError(data.message, data.code),
       };
-    } catch (err: any) {
-      return {
-        ok: false,
-        error: mapLoginError(
-          err.response?.data?.message,
-          err.response?.data?.code
-        ),
-      };
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return {
+          ok: false,
+          error: mapLoginError(
+            (err.data as any)?.message,
+            (err.data as any)?.code
+          ),
+        };
+      }
+
+      return { ok: false, error: "CONNECTION_ERROR" };
     }
   },
 
@@ -68,22 +72,27 @@ export const authApi = {
     password: string
   ): Promise<RegisterResult> {
     try {
-      const resp = await api.post<RegisterResponse>("/auth/register", {
-        name,
-        email,
-        password,
+      const data = await http<RegisterResponse>("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password }),
+        auth: false,
       });
-
-      const data = resp.data;
 
       if (data.ok) return { ok: true, message: data.message };
 
       return { ok: false, error: data.code || data.message };
-    } catch (err: any) {
-      return {
-        ok: false,
-        error: err.response?.data?.code || "CONNECTION_ERROR",
-      };
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return {
+          ok: false,
+          error:
+            (err.data as any)?.code ||
+            (err.data as any)?.message ||
+            "CONNECTION_ERROR",
+        };
+      }
+
+      return { ok: false, error: "CONNECTION_ERROR" };
     }
   },
 
@@ -92,9 +101,9 @@ export const authApi = {
    * ============================================================ */
   async me(): Promise<User | null> {
     try {
-      const resp = await api.get<MeResponse>("/auth/me");
-      if (resp.data.ok && resp.data.user) {
-        return normalizeUser(resp.data.user);
+      const data = await http<MeResponse>("/api/auth/me");
+      if (data.ok && data.user) {
+        return normalizeUser(data.user);
       }
       return null;
     } catch {

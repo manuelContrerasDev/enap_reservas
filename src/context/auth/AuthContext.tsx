@@ -1,12 +1,20 @@
 // src/context/auth/AuthContext.tsx
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import type { User, UserRole, LoginResult, RegisterResult } from "./types/auth.types";
+import { createContext, ReactNode, useEffect, useState } from "react";
+import type {
+  User,
+  UserRole,
+  LoginResult,
+  RegisterResult,
+} from "./types/auth.types";
 
 import { authApi } from "./services/auth.api";
 import { authStorage } from "./helpers/auth.storage";
-import { getTarifaPerfil, isAdmin, isSocio, isExterno } from "./helpers/auth.role";
-
-import { api } from "@/lib/axios";
+import {
+  getTarifaPerfil,
+  isAdmin,
+  isSocio,
+  isExterno,
+} from "./helpers/auth.role";
 
 interface AuthContextValue {
   user: User | null;
@@ -16,14 +24,14 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
 
-  // helpers especiales
+  // helpers de dominio
   isAdmin: boolean;
   isSocio: boolean;
   isExterno: boolean;
   tarifaPerfil: "SOCIO" | "EXTERNO";
 
   login: (email: string, password: string) => Promise<LoginResult>;
-  register: (a: string, b: string, c: string) => Promise<RegisterResult>;
+  register: (n: string, e: string, p: string) => Promise<RegisterResult>;
   logout: () => void;
 }
 
@@ -34,49 +42,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  /* ------------------------------------------------------------
+   * Persistencia de sesión (DOMINIO, no infraestructura)
+   * ------------------------------------------------------------ */
   const saveSession = (user: User, token: string) => {
     setUser(user);
     setToken(token);
     authStorage.save(user, token);
-    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
     authStorage.clear();
-    delete api.defaults.headers.common["Authorization"];
   };
 
-  // Restaurar sesión inicial
+  /* ------------------------------------------------------------
+   * Restaurar sesión al cargar la app
+   * ------------------------------------------------------------ */
   useEffect(() => {
     const stored = authStorage.load();
     if (stored) {
       setUser(stored.user);
       setToken(stored.token);
-      api.defaults.headers.common["Authorization"] = `Bearer ${stored.token}`;
     }
+    setIsLoading(false);
   }, []);
 
-  // Validar token
+  /* ------------------------------------------------------------
+   * Validar token contra backend (/auth/me)
+   * ------------------------------------------------------------ */
   useEffect(() => {
+    if (!token) return;
+
     const validate = async () => {
-      if (!token) return setIsLoading(false);
-
-      const me = await authApi.me();
-      if (!me) {
+      try {
+        const me = await authApi.me();
+        if (!me) {
+          logout();
+        } else {
+          setUser(me);
+        }
+      } catch {
         logout();
-      } else {
-        saveSession(me, token);
       }
-
-      setIsLoading(false);
     };
 
     validate();
   }, [token]);
 
-  const login = async (email: string, password: string): Promise<LoginResult> => {
+  /* ------------------------------------------------------------
+   * Auth actions
+   * ------------------------------------------------------------ */
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<LoginResult> => {
     const result = await authApi.login(email, password);
 
     if (result.ok && result.user && result.token) {
