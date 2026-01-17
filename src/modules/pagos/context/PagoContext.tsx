@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import type { InitPagoResponse } from "../services/initPago";
+import type { InitPagoResponse } from "../types/initPago";
 
 export type PagoEstado =
   | "idle"

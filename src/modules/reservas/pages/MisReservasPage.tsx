@@ -5,14 +5,14 @@ import { Loader2, Search, XCircle, Pencil, Landmark, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { useReservasSocio } from "@/modules/reservas/hooks/useReservasSocio";
-import { useNotificacion } from "@/context/NotificacionContext";
-import { useAuth } from "@/context/auth";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
+import { useAuth } from "@/modules/auth/hooks";
 
 import { formatCLP } from "@/shared/lib/format";
 import { PATHS } from "@/routes/paths";
 import { reservaPermisos } from "@/modules/reservas/utils/reservaPermisos";
 
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
+import type { ReservaFrontend } from "@/modules/reservas/types/ReservaFrontend";
 import ModalEditarInvitados from "@/modules/reservas/modals/ModalEditarInvitados";
 
 import { actualizarInvitadosReserva } from "@/modules/reservas/api/actualizarInvitadosReserva";

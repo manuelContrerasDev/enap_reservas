@@ -1,5 +1,5 @@
 // =====================================================================
-//  FechasForm.tsx — ENAP 2025 (Auditado y sincronizado)
+// FechasForm.tsx — ENAP 2025 (UX ONLY · FINAL SYNC)
 // =====================================================================
 
 import React from "react";
@@ -10,22 +10,9 @@ import {
   FieldErrors,
 } from "react-hook-form";
 
-import { ReservaFrontendType } from "@/validators/reserva.schema";
-import { useNotificacion } from "@/context/NotificacionContext";
-import { parseYmdLocal } from "@/lib";
-
-// -------------------------------------------
-// Helpers
-// -------------------------------------------
-const isMonday = (date: Date) => date.getDay() === 1;
-
-const diffDias = (ini: Date, fin: Date) =>
-  Math.ceil((fin.getTime() - ini.getTime()) / 86400000);
-
-interface BloqueOcupado {
-  fechaInicio: string;
-  fechaFin: string;
-}
+import { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
+import { parseYmdLocal } from "@/shared/lib";
 
 interface Props {
   register: UseFormRegister<ReservaFrontendType>;
@@ -35,8 +22,9 @@ interface Props {
 
   minDate: string;
   espacioTipo: "CABANA" | "QUINCHO" | "PISCINA";
-  bloquesOcupados?: BloqueOcupado[];
 }
+
+const isMonday = (d: Date) => d.getDay() === 1;
 
 const FechasForm: React.FC<Props> = ({
   register,
@@ -45,42 +33,25 @@ const FechasForm: React.FC<Props> = ({
   errors,
   minDate,
   espacioTipo,
-  bloquesOcupados = [],
 }) => {
   const { agregarNotificacion } = useNotificacion();
 
   const inicio = watch("fechaInicio");
   const fin = watch("fechaFin");
 
-  // ------------------------------------------------------------
-  // Validar solapamiento
-  // ------------------------------------------------------------
-  const haySolape = (iniStr: string, finStr: string) => {
-    const i = parseYmdLocal(iniStr);
-    const f = parseYmdLocal(finStr);
-    if (!i || !f) return false;
-
-    return bloquesOcupados.some((b) => {
-      const bi = new Date(b.fechaInicio);
-      const bf = new Date(b.fechaFin);
-      return i <= bf && f >= bi;
-    });
-  };
-
-  // ------------------------------------------------------------
-  // Cambio inicio
-  // ------------------------------------------------------------
+  /* ============================================================
+   * INICIO — UX
+   * ============================================================ */
   const onInicioChange = (value: string) => {
     const i = parseYmdLocal(value);
     if (!i) return;
 
+    // Aviso UX (NO bloqueo)
     if (espacioTipo !== "PISCINA" && isMonday(i)) {
       agregarNotificacion(
-        "No puedes iniciar una reserva un día lunes.",
+        "Los lunes el recinto se encuentra en mantención.",
         "info"
       );
-      setValue("fechaInicio", "", { shouldDirty: true, shouldValidate: true });
-      return;
     }
 
     setValue("fechaInicio", value, {
@@ -88,6 +59,7 @@ const FechasForm: React.FC<Props> = ({
       shouldValidate: true,
     });
 
+    // Piscina = mismo día
     if (espacioTipo === "PISCINA") {
       setValue("fechaFin", value, {
         shouldDirty: true,
@@ -96,57 +68,22 @@ const FechasForm: React.FC<Props> = ({
       return;
     }
 
-    if (fin) {
-      const f = parseYmdLocal(fin);
-      if (!f || f <= i) {
-        const autoFin = new Date(i);
-        autoFin.setDate(i.getDate() + 3);
+    // Autocompletar fin si no existe
+    if (!fin) {
+      const autoFin = new Date(i);
+      autoFin.setDate(i.getDate() + 3);
 
-        const iso = autoFin.toISOString().slice(0, 10);
-
-        setValue("fechaFin", iso, {
-          shouldDirty: true,
-          shouldValidate: true,
-        });
-
-        agregarNotificacion(
-          "Ajustamos la fecha de término para cumplir el mínimo de días.",
-          "info"
-        );
-      }
+      setValue("fechaFin", autoFin.toISOString().slice(0, 10), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     }
   };
 
-  // ------------------------------------------------------------
-  // Cambio fin
-  // ------------------------------------------------------------
+  /* ============================================================
+   * FIN — UX
+   * ============================================================ */
   const onFinChange = (value: string) => {
-    if (!inicio) return;
-
-    const i = parseYmdLocal(inicio);
-    const f = parseYmdLocal(value);
-    if (!i || !f) return;
-
-    const dias = diffDias(i, f);
-
-    if (dias < 3 || dias > 6) {
-      agregarNotificacion(
-        "La reserva debe ser entre 3 y 6 días.",
-        "error"
-      );
-      setValue("fechaFin", "", { shouldDirty: true, shouldValidate: true });
-      return;
-    }
-
-    if (haySolape(inicio, value)) {
-      agregarNotificacion(
-        "El espacio ya está reservado en ese rango de fechas.",
-        "error"
-      );
-      setValue("fechaFin", "", { shouldDirty: true, shouldValidate: true });
-      return;
-    }
-
     setValue("fechaFin", value, {
       shouldDirty: true,
       shouldValidate: true,
@@ -161,7 +98,7 @@ const FechasForm: React.FC<Props> = ({
 
       {/* FECHA INICIO */}
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-gray-700">
           Fecha de inicio
         </label>
 
@@ -176,14 +113,16 @@ const FechasForm: React.FC<Props> = ({
         />
 
         {errors.fechaInicio && (
-          <p className="text-xs text-red-600">{errors.fechaInicio.message}</p>
+          <p className="text-xs text-red-600">
+            {errors.fechaInicio.message}
+          </p>
         )}
       </div>
 
       {/* FECHA FIN */}
       {espacioTipo !== "PISCINA" && (
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-gray-700">
             Fecha de término
           </label>
 
@@ -198,7 +137,9 @@ const FechasForm: React.FC<Props> = ({
           />
 
           {errors.fechaFin && (
-            <p className="text-xs text-red-600">{errors.fechaFin.message}</p>
+            <p className="text-xs text-red-600">
+              {errors.fechaFin.message}
+            </p>
           )}
         </div>
       )}

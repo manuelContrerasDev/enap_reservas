@@ -1,18 +1,20 @@
-// src/pages/auth/RegisterPage.tsx
+// src/modules/auth/pages/RegisterPage.tsx
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
 import AuthBGLayout from "@/modules/auth/components/AuthBGLayout";
 import AuthHeader from "@/modules/auth/components/AuthHeader";
-import { RegisterForm } from "@/modules/auth/components/AuthRegisterForm";
+import AuthRegisterForm from "@/modules/auth/forms/RegisterForm";
 
-import { useNotificacion } from "@/context/NotificacionContext";
-import { PATHS } from "@/routes/paths";
+import { useAuth } from "@/modules/auth/hooks";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
+import { PATHS } from "@/app/router/paths";
 
 import heroCabana from "@/assets/enap-login.png";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const { agregarNotificacion } = useNotificacion();
 
   return (
@@ -22,48 +24,35 @@ export default function RegisterPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
         className="w-full max-w-md space-y-10"
+        aria-live="polite"
       >
         <AuthHeader
-          title="Crear Cuenta ENAP"
-          subtitle="Regístrate para poder reservar cabañas, quinchos y espacios."
+          title="Crear cuenta"
+          subtitle="Regístrate para poder reservar cabañas, quinchos y espacios del Centro Vacacional ENAP."
         />
 
-        <div className="space-y-6">
-          <RegisterForm
-            onStartLoading={() => {}}
-            onFinishLoading={() => {}}
-            onError={(msg) => {
-              agregarNotificacion(msg, "error");
-            }}
-            onSuccess={() => {
-              agregarNotificacion(
-                "Cuenta creada correctamente 🎉 Revisa tu correo para confirmarla.",
-                "success"
-              );
+        <AuthRegisterForm
+          onSubmitRegister={register}
+          onSuccess={() => {
+            agregarNotificacion(
+              "Cuenta creada correctamente. Revisa tu correo para confirmar tu registro.",
+              "success"
+            );
 
-              navigate(`${PATHS.AUTH_EMAIL_SENT}?type=register`, {
-                replace: true,
-              });
-            }}
-          />
+            navigate(`${PATHS.AUTH_EMAIL_SENT}?type=register`, {
+              replace: true,
+            });
+          }}
+        />
 
-          <div className="text-center text-sm space-y-1">
-            <button
-              onClick={() => navigate(PATHS.AUTH_LOGIN)}
-              className="text-[#C7A96A] font-semibold hover:text-[#b09058]"
-            >
-              ¿Ya tienes cuenta? Iniciar sesión →
-            </button>
-
-            <br />
-
-            <button
-              onClick={() => navigate(PATHS.AUTH_RESEND_CONFIRMATION)}
-              className="text-[#003D52] font-medium hover:underline"
-            >
-              ¿No recibiste el correo de confirmación?
-            </button>
-          </div>
+        <div className="text-center text-sm space-y-1">
+          <button
+            type="button"
+            onClick={() => navigate(PATHS.AUTH_LOGIN)}
+            className="text-[#C7A96A] font-semibold hover:text-[#b09058]"
+          >
+            ¿Ya tienes cuenta? Inicia sesión →
+          </button>
         </div>
       </motion.div>
     </AuthBGLayout>

@@ -1,5 +1,5 @@
 // ============================================================
-// PersonasForm.tsx — ENAP 2025 (Auditado y sincronizado)
+// PersonasForm.tsx — ENAP 2025 (FINAL SYNC)
 // ============================================================
 
 import React from "react";
@@ -10,7 +10,7 @@ import {
   UseFormRegister,
 } from "react-hook-form";
 
-import { ReservaFrontendType } from "@/validators/reserva.schema";
+import { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
 
 interface Props {
   register: UseFormRegister<ReservaFrontendType>;
@@ -28,27 +28,36 @@ const PersonasForm: React.FC<Props> = ({
   maxCap,
 }) => {
   const personas = watch("cantidadPersonas") ?? 1;
+  const invitados = watch("invitados") ?? [];
 
   const clamp = (num: number) => Math.max(1, Math.min(maxCap, num));
 
+  const syncInvitados = (nuevaCantidad: number) => {
+    if (invitados.length > nuevaCantidad) {
+      setValue("invitados", invitados.slice(0, nuevaCantidad), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  };
+
   const updatePersonas = (value: number) => {
     const safe = clamp(value);
+
     setValue("cantidadPersonas", safe, {
       shouldValidate: true,
       shouldDirty: true,
     });
+
+    syncInvitados(safe);
   };
 
-  const increment = () => updatePersonas((personas ?? 1) + 1);
-  const decrement = () => updatePersonas((personas ?? 1) - 1);
+  const increment = () => updatePersonas(personas + 1);
+  const decrement = () => updatePersonas(personas - 1);
 
   const handleInputChange = (val: string) => {
     const n = parseInt(val, 10);
-    if (isNaN(n)) {
-      updatePersonas(1);
-      return;
-    }
-    updatePersonas(n);
+    updatePersonas(isNaN(n) ? 1 : n);
   };
 
   return (
@@ -58,26 +67,22 @@ const PersonasForm: React.FC<Props> = ({
       </legend>
 
       <div className="flex items-center gap-3">
-        {/* BTN - */}
         <button
           type="button"
           onClick={decrement}
           disabled={personas <= 1}
           aria-label="Disminuir cantidad"
-          className={`
-            w-10 h-10 flex items-center justify-center rounded-lg
+          className={`w-10 h-10 flex items-center justify-center rounded-lg
             bg-gray-200 text-gray-700 text-xl font-bold transition
             ${
               personas <= 1
                 ? "opacity-40 cursor-not-allowed"
                 : "hover:bg-gray-300"
-            }
-          `}
+            }`}
         >
           −
         </button>
 
-        {/* INPUT */}
         <input
           type="number"
           min={1}
@@ -86,27 +91,22 @@ const PersonasForm: React.FC<Props> = ({
             valueAsNumber: true,
             onChange: (e) => handleInputChange(e.target.value),
           })}
-          className="
-            w-full rounded-lg border px-4 py-3 text-center font-semibold
-            shadow-sm focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]
-          "
+          className="w-full rounded-lg border px-4 py-3 text-center font-semibold
+            shadow-sm focus:ring-2 focus:ring-[#005D73] focus:border-[#005D73]"
         />
 
-        {/* BTN + */}
         <button
           type="button"
           onClick={increment}
           disabled={personas >= maxCap}
           aria-label="Aumentar cantidad"
-          className={`
-            w-10 h-10 flex items-center justify-center rounded-lg
+          className={`w-10 h-10 flex items-center justify-center rounded-lg
             bg-gray-200 text-gray-700 text-xl font-bold transition
             ${
               personas >= maxCap
                 ? "opacity-40 cursor-not-allowed"
                 : "hover:bg-gray-300"
-            }
-          `}
+            }`}
         >
           +
         </button>

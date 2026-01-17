@@ -19,10 +19,14 @@ export const PATHS = {
   RESERVA_PREVIEW: "/reserva/preview",
   RESERVA_TRANSFERENCIA: "/reserva/transferencia",
 
+
+  //ADMIN
   ADMIN_ESPACIOS: "/admin/espacios",
   ADMIN_RESERVAS: "/admin/reservas",
   ADMIN_RESERVAS_MANUAL: "/admin/reservas/crear",
   TESORERIA: "/admin/tesoreria",
+
+  ADMIN_AUDIT: "/admin/audit",
 
   NOT_FOUND: "*",
 } as const;

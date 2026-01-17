@@ -1,8 +1,5 @@
-/* ============================================================
- * 🔐 RESET CONFIRM PAGE — FIX REAL (SYNC BACKEND)
- * ============================================================ */
-
-import React, { useEffect, useState, useRef } from "react";
+// src/pages/auth/ResetConfirmPage.tsx
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -11,21 +8,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   resetPasswordSchema,
   ResetPasswordSchemaType,
-} from "@/validators/auth.schema";
+} from "@/modules/auth/schemas/auth.schema";
 
 import AuthBGLayout from "@/modules/auth/components/AuthBGLayout";
 import AuthHeader from "@/modules/auth/components/AuthHeader";
 import AuthInput from "@/modules/auth/components/AuthInput";
 import AuthButton from "@/modules/auth/components/AuthButton";
 
-import { useNotificacion } from "@/context/NotificacionContext";
-import { PATHS } from "@/routes/paths";
-
+import { authApi } from "@/modules/auth/api/auth.api";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
+import { PATHS } from "@/app/router/paths";
 import heroCabana from "@/assets/enap-login.png";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-type Status = "loading" | "ready" | "expired" | "invalid";
+type Status = "loading" | "ready";
 
 export default function ResetConfirmPage() {
   const [params] = useSearchParams();
@@ -35,8 +30,7 @@ export default function ResetConfirmPage() {
   const token = params.get("token") ?? "";
   const [status, setStatus] = useState<Status>("loading");
 
-  // 🛡️ Protección StrictMode (React 18 DEV)
-  const hasRun = useRef(false);
+  const validatedRef = useRef(false);
 
   const {
     register,
@@ -48,124 +42,93 @@ export default function ResetConfirmPage() {
   });
 
   /* ============================================================
-   * 1️⃣ VALIDAR TOKEN (SOLO LECTURA)
+   * VALIDAR TOKEN (solo una vez)
    * ============================================================ */
   useEffect(() => {
-    if (hasRun.current) return;
-    hasRun.current = true;
+    if (validatedRef.current) return;
+    validatedRef.current = true;
 
     if (!token) {
-      setStatus("invalid");
+      navigate(PATHS.AUTH_LINK_EXPIRED, { replace: true });
       return;
     }
 
-    const validateToken = async () => {
-      try {
-        const res = await fetch(
-          `${API_URL}/api/auth/check-reset?token=${token}`
-        );
-
-        // ✔ Backend responde 200 OK → token válido
-        if (res.ok) {
-          setStatus("ready");
-          return;
-        }
-
-        const json = await res.json().catch(() => ({}));
-
-        if (json.code === "EXPIRED") {
-          setStatus("expired");
-          return;
-        }
-
-        setStatus("invalid");
-      } catch {
-        setStatus("invalid");
-      }
-    };
-
-    validateToken();
-  }, [token]);
+    authApi
+      .checkReset(token)
+      .then(() => setStatus("ready"))
+      .catch(() =>
+        navigate(`${PATHS.AUTH_LINK_EXPIRED}?type=reset`, { replace: true })
+      );
+  }, [token, navigate]);
 
   /* ============================================================
-   * 2️⃣ REDIRECCIÓN SOLO SI TOKEN NO ES VÁLIDO
-   * ============================================================ */
-  useEffect(() => {
-    if (status === "loading" || status === "ready") return;
-
-    navigate(PATHS.AUTH_LINK_EXPIRED, { replace: true });
-  }, [status, navigate]);
-
-  /* ============================================================
-   * 3️⃣ SUBMIT NUEVA CONTRASEÑA
+   * SUBMIT NUEVA CONTRASEÑA
    * ============================================================ */
   const onSubmit = async (data: ResetPasswordSchemaType) => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/reset-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: data.token,
-          newPassword: data.newPassword, // 👈 solo esto
-        }),
-      });
-
-      const json = await res.json().catch(() => ({}));
-
-      if (json.ok) {
-        agregarNotificacion("Contraseña actualizada correctamente.", "success");
-        navigate(PATHS.AUTH_LOGIN, { replace: true });
-        return;
-      }
+      await authApi.resetPassword(data.token, data.newPassword);
 
       agregarNotificacion(
-        json.message || "No se pudo actualizar la contraseña.",
+        "Tu contraseña fue actualizada correctamente.",
+        "success"
+      );
+
+      navigate(PATHS.AUTH_LOGIN, { replace: true });
+    } catch {
+      agregarNotificacion(
+        "El enlace ya no es válido o ha expirado.",
         "error"
       );
-    } catch {
-      agregarNotificacion("Error de conexión con el servidor.", "error");
+
+      navigate(`${PATHS.AUTH_LINK_EXPIRED}?type=reset`, { replace: true });
     }
   };
 
-  /* ============================================================
-   * 4️⃣ UI ENAP
-   * ============================================================ */
   return (
     <AuthBGLayout backgroundImage={heroCabana}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.45, ease: "easeOut" }}
-        className="w-full max-w-md space-y-10"
+        className="w-full max-w-md space-y-8"
+        aria-live="polite"
       >
         <AuthHeader
-          title="Restablecer Contraseña"
-          subtitle="Ingresa tu nueva contraseña para continuar."
+          title="Restablecer contraseña"
+          subtitle="Crea una nueva contraseña para acceder nuevamente a tu cuenta."
         />
 
+        {/* Estado loading */}
         {status === "loading" && (
-          <p className="text-gray-700 text-sm">Validando enlace…</p>
+          <div className="flex items-center gap-3 text-gray-600 text-sm">
+            <motion.div
+              className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+            />
+            Validando enlace de seguridad…
+          </div>
         )}
 
+        {/* Formulario */}
         {status === "ready" && (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* TOKEN */}
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-6"
+            aria-busy={isSubmitting}
+          >
             <input type="hidden" {...register("token")} />
 
-            {/* NUEVA CONTRASEÑA */}
             <AuthInput
               type="password"
               label="Nueva contraseña"
-              placeholder="••••••••"
               error={errors.newPassword?.message}
               {...register("newPassword")}
             />
 
-            {/* CONFIRMAR CONTRASEÑA */}
             <AuthInput
               type="password"
               label="Confirmar nueva contraseña"
-              placeholder="••••••••"
               error={errors.confirmPassword?.message}
               {...register("confirmPassword")}
             />
@@ -175,7 +138,6 @@ export default function ResetConfirmPage() {
             </AuthButton>
           </form>
         )}
-
       </motion.div>
     </AuthBGLayout>
   );

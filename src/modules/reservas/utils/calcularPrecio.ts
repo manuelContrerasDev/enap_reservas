@@ -1,23 +1,26 @@
 // ============================================================
-// calcularPrecio.ts — Motor de cálculo Frontend ENAP (FINAL)
+// calcularPrecio.ts — Motor de cálculo Frontend ENAP (PRO)
 // ============================================================
 
-import { parseYmdLocal } from "@/lib";
-import type { EspacioDTO } from "@/types/espacios";
-import { UsoReserva } from "@/types/enums";
+import { parseYmdLocal } from "@/shared/lib";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
+import { UsoReserva } from "@/shared/types/enums";
 
 /* ============================================================
  * Input exclusivo para cálculo (YA NORMALIZADO)
  * ============================================================ */
 export interface ReservaCalculoInput {
   usoReserva: UsoReserva;
+
+  /** Personas totales declaradas (incluye socio) */
   cantidadPersonas: number;
-  cantidadPersonasPiscina: number;
+
+  /** Invitados declarados explícitamente */
   invitados: {
     nombre: string;
     rut: string;
     edad?: number;
-    esPiscina: boolean; // ✅ obligatorio
+    esPiscina: boolean;
   }[];
 }
 
@@ -43,6 +46,9 @@ export function calcularTotalesReserva({
   fechaFin: string;
   data: ReservaCalculoInput;
 }): TotalesReserva {
+  /* =========================
+   * FECHAS (DST SAFE)
+   * ========================= */
   const ini = parseYmdLocal(fechaInicio);
   const fin = parseYmdLocal(fechaFin);
 
@@ -60,46 +66,65 @@ export function calcularTotalesReserva({
     (fin.getTime() - ini.getTime()) / 86_400_000
   );
 
+  /* =========================
+   * ROL / TARIFA
+   * ========================= */
   const esSocio =
     data.usoReserva === UsoReserva.USO_PERSONAL ||
     data.usoReserva === UsoReserva.CARGA_DIRECTA;
 
   /* =========================
-   * ESPACIO
+   * ESPACIO (base)
    * ========================= */
   let valorEspacio = 0;
 
   if (espacio.modalidadCobro !== "POR_PERSONA") {
-    const base = esSocio
+    const precioBase = esSocio
       ? espacio.precioBaseSocio
       : espacio.precioBaseExterno;
 
-    valorEspacio = base * dias;
+    valorEspacio = precioBase * dias;
   }
 
   /* =========================
-   * PERSONAS
+   * PERSONAS (adicionales)
+   * =========================
+   * Regla actual:
+   * - Se cobra por persona declarada
+   * - El socio NO tiene tarifa especial aquí
    * ========================= */
   const tarifaPersona = esSocio
     ? espacio.precioPersonaAdicionalSocio
     : espacio.precioPersonaAdicionalExterno;
 
-  const pagoPersonas = data.cantidadPersonas * tarifaPersona;
+  const pagoPersonas =
+    espacio.modalidadCobro === "POR_PERSONA"
+      ? data.cantidadPersonas * tarifaPersona * dias
+      : data.cantidadPersonas * tarifaPersona;
 
   /* =========================
-   * PISCINA
+   * PISCINA (SOLO SI HAY USO REAL)
    * ========================= */
-  const tarifaPiscina = esSocio
-    ? espacio.precioPiscinaSocio
-    : espacio.precioPiscinaExterno;
+  let pagoPiscina = 0;
 
   const personasPiscina = data.invitados.filter(
     (i) => i.esPiscina === true
   ).length;
 
-  const pagoPiscina = esSocio
-    ? Math.max(personasPiscina - 5, 0) * tarifaPiscina
-    : personasPiscina * tarifaPiscina;
+  const permitePiscina =
+    espacio.tipo === "PISCINA" ||
+    espacio.tipo === "CABANA" ||
+    espacio.tipo === "QUINCHO";
+
+  if (permitePiscina && personasPiscina > 0) {
+    const tarifaPiscina = esSocio
+      ? espacio.precioPiscinaSocio
+      : espacio.precioPiscinaExterno;
+
+    pagoPiscina = esSocio
+      ? Math.max(personasPiscina - 5, 0) * tarifaPiscina
+      : personasPiscina * tarifaPiscina;
+  }
 
   /* =========================
    * TOTAL

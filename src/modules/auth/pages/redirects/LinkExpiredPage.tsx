@@ -7,13 +7,12 @@ import AuthHeader from "@/modules/auth/components/AuthHeader";
 import AuthButton from "@/modules/auth/components/AuthButton";
 
 import heroCabana from "@/assets/enap-login.png";
-import { PATHS } from "@/routes/paths";
+import { PATHS } from "@/app/router/paths";
 
 export default function LinkExpiredPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
-  // Normalizar tipo
   const rawType = params.get("type")?.toLowerCase();
   const isReset = rawType === "reset";
 
@@ -36,16 +35,17 @@ export default function LinkExpiredPage() {
   return (
     <AuthBGLayout backgroundImage={heroCabana}>
       <motion.div
-        initial={{ opacity: 0, y: 25 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
         className="space-y-8 max-w-md w-full"
+        aria-live="polite"
       >
         <AuthHeader title={title} subtitle={subtitle} />
 
         <div className="text-center space-y-6">
-          <p className="text-red-600 font-semibold text-lg">
-            ✖ El enlace ha expirado o es inválido
+          <p className="text-red-600 font-semibold text-base">
+            El enlace ha expirado o no es válido.
           </p>
 
           <p className="text-gray-700 text-sm leading-relaxed">
@@ -55,7 +55,11 @@ export default function LinkExpiredPage() {
           </p>
 
           <div className="space-y-3">
-            <AuthButton onClick={() => navigate(PATHS.AUTH_LOGIN, { replace: true })}>
+            <AuthButton
+              onClick={() =>
+                navigate(PATHS.AUTH_LOGIN, { replace: true })
+              }
+            >
               Volver al inicio de sesión
             </AuthButton>
 

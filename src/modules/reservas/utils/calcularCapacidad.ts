@@ -4,7 +4,7 @@
 // Fuente de verdad: EspacioDTO
 // ============================================================
 
-import type { EspacioDTO } from "@/types/espacios";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
 
 /**
  * Retorna la capacidad máxima permitida para el espacio.

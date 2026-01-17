@@ -1,16 +1,16 @@
 import React from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 
-import LayoutBase from "@/components/layout/LayoutBase";
+import LayoutBase from "@/shared/ui/layout/LayoutBase";
 import { PATHS } from "./paths";
 import { ProtectedRoute, RoleRedirect } from "./guards";
 
-import { ReservaProvider } from "@/context/ReservaContext";
+import { ReservaProvider } from "@/modules/reservas/context/ReservaContext";
 
 // AUTH
-import LoginPage from "@/modules/auth/pages/LoginPage";
-import RegisterPage from "@/modules/auth/pages/RegisterPage";
 import {
+  LoginPage,
+  RegisterPage,
   LinkExpiredPage,
   EmailSentPage,
   AlreadyConfirmedPage,
@@ -30,10 +30,12 @@ import ReservaPreviewPage from "@/modules/reservas/pages/ReservaPreviewPage";
 import TransferenciaPage from "@/modules/reservas/pages/TransferenciaPage";
 
 // ADMIN
-import AdminEspaciosPage from "@/modules/espacios/pages/AdminEspaciosPage";
-import AdminReservasPage from "@/modules/admin/reservas/pages/AdminReservasPage";
-import AdminReservaManualPage from "@/modules/admin/reservas/pages/AdminReservaManualPage";
-import TesoreriaPage from "@/modules/admin/reservas/pages/AdminTesoreriaPage";
+import AdminEspaciosPage from "@/modules/admin/pages/AdminEspaciosPage";
+import AdminReservasPage from "@/modules/admin/pages/AdminReservasPage";
+import AdminReservaManualPage from "@/modules/admin/pages/AdminReservaManualPage";
+import TesoreriaPage from "@/modules/admin/gestion/tesoreria/pages/AdminTesoreriaPage";
+import AdminAuditLogsPage from "@/modules/admin/gestion/audit/pages/AdminAuditLogsPage";
+
 
 export function AppRouter() {
   return (
@@ -92,6 +94,8 @@ export function AppRouter() {
           />
           <Route path={PATHS.ADMIN_ESPACIOS} element={<AdminEspaciosPage />} />
           <Route path={PATHS.TESORERIA} element={<TesoreriaPage />} />
+
+          <Route path={PATHS.ADMIN_AUDIT} element={<AdminAuditLogsPage />} />
         </Route>
       </Route>
 

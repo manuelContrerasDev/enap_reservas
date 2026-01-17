@@ -1,7 +1,7 @@
 // src/modules/reserva/preview/InfoReservaCard.tsx
 import React from "react";
 import { Home, Users } from "lucide-react";
-import type { ReservaFrontend } from "@/types/ReservaDTO";
+import type { ReservaFrontend } from "@/modules/reservas/types/ReservaDTO";
 
 interface Props {
   reserva: ReservaFrontend;

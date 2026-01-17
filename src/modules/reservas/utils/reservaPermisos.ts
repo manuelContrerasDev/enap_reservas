@@ -1,6 +1,6 @@
 // src/modules/reservas/utils/reservaPermisos.ts
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
-import { ReservaEstado } from "@/types/enums";
+import type { ReservaFrontend } from "@/modules/reservas/types/ReservaFrontend";
+import { ReservaEstado } from "@/shared/types/enums";
 
 /**
  * Permisos de acciones del SOCIO sobre su reserva

@@ -1,5 +1,5 @@
 // ============================================================
-// UsoReservaForm.tsx — Sincronizado ENAP + Validación PRO
+// UsoReservaForm.tsx — ENAP 2025 (FINAL SYNC)
 // ============================================================
 
 import React from "react";
@@ -10,7 +10,7 @@ import {
   FieldErrors,
 } from "react-hook-form";
 
-import { ReservaFrontendType } from "@/validators/reserva.schema";
+import { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
 import ResponsableForm from "./ResponsableForm";
 
 interface Props {
@@ -26,16 +26,19 @@ export const UsoReservaForm: React.FC<Props> = ({
   setValue,
   errors,
 }) => {
-  const usoReserva = watch("usoReserva");
   const socioPresente = watch("socioPresente");
 
-  const handleUso = (
-    value: ReservaFrontendType["usoReserva"]
-  ) => {
-    setValue("usoReserva", value, {
-      shouldValidate: true,
+  const toggleSocioPresente = (checked: boolean) => {
+    setValue("socioPresente", checked, {
       shouldDirty: true,
+      shouldValidate: true,
     });
+
+    if (checked) {
+      setValue("nombreResponsable", null);
+      setValue("rutResponsable", null);
+      setValue("emailResponsable", null);
+    }
   };
 
   return (
@@ -44,23 +47,15 @@ export const UsoReservaForm: React.FC<Props> = ({
         Uso de la reserva
       </h4>
 
-      {/* ============================
-          TIPO DE USO
-      ============================ */}
-      <div className="flex flex-col gap-1">
+      {/* Tipo de uso */}
+      <div>
         <label className="text-sm font-medium text-gray-800">
           Tipo de uso
         </label>
-
         <select
-          value={usoReserva}
-          onChange={(e) => 
-            handleUso(e.target.value as ReservaFrontendType["usoReserva"])
-          }
-          className="
-            mt-1 w-full rounded-lg border px-4 py-3 text-sm
-            focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-          "
+          {...register("usoReserva")}
+          className="mt-1 w-full rounded-lg border px-4 py-3 text-sm
+            focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan"
         >
           <option value="USO_PERSONAL">Uso personal</option>
           <option value="CARGA_DIRECTA">Carga directa</option>
@@ -68,44 +63,29 @@ export const UsoReservaForm: React.FC<Props> = ({
         </select>
 
         {errors.usoReserva && (
-          <p className="text-xs text-red-600">{errors.usoReserva.message}</p>
+          <p className="text-xs text-red-600">
+            {errors.usoReserva.message}
+          </p>
         )}
       </div>
 
-      {/* ============================
-          SOCIO PRESENTE
-      ============================ */}
-      <div className="flex items-center gap-2 mt-2">
+      {/* Socio presente */}
+      <div className="flex items-center gap-2">
         <input
           type="checkbox"
           checked={socioPresente}
-          onChange={(e) =>
-            setValue("socioPresente", e.target.checked, {
-              shouldValidate: true,
-              shouldDirty: true,
-            })
-          }
+          onChange={(e) => toggleSocioPresente(e.target.checked)}
           className="h-4 w-4 text-enap-cyan"
         />
-
         <label className="text-sm text-gray-700 cursor-pointer">
           El socio estará presente
         </label>
       </div>
 
-      {/* ============================
-          RESPONSABLE (SI NO VIENE EL SOCIO)
-      ============================ */}
+      {/* Responsable */}
       {!socioPresente && (
-        <div className="mt-4 bg-gray-50 border rounded-xl p-4 shadow-inner">
-          <ResponsableForm
-            register={register}
-            setValue={setValue}
-            errors={errors}
-          />
-        </div>
+        <ResponsableForm register={register} errors={errors} />
       )}
-
     </section>
   );
 };

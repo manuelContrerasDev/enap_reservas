@@ -1,5 +1,5 @@
-// src/components/espacios/MiniCalendario.tsx
-import React, { useMemo } from "react";
+// src/modules/espacios/components/MiniCalendario.tsx
+import React, { memo, useMemo, useCallback } from "react";
 import { DayPicker } from "react-day-picker";
 import type { Matcher } from "react-day-picker";
 import { es } from "date-fns/locale";
@@ -23,42 +23,67 @@ const toLocalISO = (date: Date) => {
   return `${y}-${m}-${d}`;
 };
 
-export default function MiniCalendario({
+const fromLocalISO = (iso: string) => {
+  // iso esperado: YYYY-MM-DD
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d, 12, 0, 0, 0); // 12:00 evita edge cases DST
+};
+
+export default memo(function MiniCalendario({
   fechaSeleccionada,
   onChange,
   estaOcupado,
 }: MiniCalendarioProps) {
   const selectedDate = fechaSeleccionada
-    ? new Date(fechaSeleccionada)
+    ? fromLocalISO(fechaSeleccionada)
     : undefined;
+
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   /* ------------------------------------------------------------
    * Disabled days
    * ------------------------------------------------------------ */
   const disabledDays: Matcher[] = useMemo(
     () => [
-      { before: new Date() },
+      { before: today },
       (date) => estaOcupado(toLocalISO(date)),
     ],
-    [estaOcupado]
+    [estaOcupado, today]
   );
 
   /* ------------------------------------------------------------
    * Modificadores visuales
    * ------------------------------------------------------------ */
-  const modifiers = {
-    ocupado: (date: Date) => estaOcupado(toLocalISO(date)),
-    disponible: (date: Date) => !estaOcupado(toLocalISO(date)),
-  };
+  const modifiers = useMemo(
+    () => ({
+      ocupado: (date: Date) => estaOcupado(toLocalISO(date)),
+      disponible: (date: Date) => !estaOcupado(toLocalISO(date)),
+    }),
+    [estaOcupado]
+  );
 
-  const handleSelect = (date: Date | undefined) => {
-    if (!date) return;
+  const handleSelect = useCallback(
+    (date: Date | undefined) => {
+      if (!date) return;
 
-    const iso = toLocalISO(date);
-    if (estaOcupado(iso)) return;
+      const iso = toLocalISO(date);
+      if (estaOcupado(iso)) return;
 
-    onChange(iso);
-  };
+      // Toggle: si selecciona la misma fecha, limpia
+      if (fechaSeleccionada === iso) {
+        onChange(null);
+        return;
+      }
+
+      onChange(iso);
+    },
+    [estaOcupado, fechaSeleccionada, onChange]
+  );
 
   return (
     <div
@@ -75,11 +100,10 @@ export default function MiniCalendario({
         disabled={disabledDays}
         modifiers={modifiers}
         showOutsideDays
-        fromDate={new Date()}
+        fromDate={today}
         modifiersClassNames={{
           selected: "bg-[#005D73] text-white rounded-md",
           today: "border border-[#005D73] rounded-md",
-
           ocupado: "bg-red-100 text-red-700 line-through opacity-70",
           disponible: "bg-emerald-100 text-emerald-700",
           disabled: "opacity-50",
@@ -94,4 +118,4 @@ export default function MiniCalendario({
       />
     </div>
   );
-}
+});

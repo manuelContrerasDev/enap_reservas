@@ -1,9 +1,7 @@
-// src/modules/pagos/hooks/usePago.ts
-
 import { useCallback } from "react";
 import { usePagoContext } from "../context/PagoContext";
-import { initPago } from "../services/initPago";
-import { useNotificacion } from "@/context/NotificacionContext";
+import { initPago } from "../api/initPago.api";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
 
 export function usePago() {
   const {
@@ -23,23 +21,29 @@ export function usePago() {
         setMensaje(null);
 
         const data = await initPago(reservaId);
-        setPagoInfo(data);
 
+        if (!data.checkoutUrl) {
+          throw new Error("El servidor no entregó la URL de pago");
+        }
+
+        setPagoInfo(data);
         setEstado("redirecting");
 
-        // 🔥 Webpay redirige → aquí termina el flujo
+        // 🔥 redirección segura
         window.location.href = data.checkoutUrl;
 
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : "No se pudo iniciar el pago";
+
         console.error("❌ Error iniciando pago:", err);
 
         setEstado("error");
-        setMensaje(err?.message ?? "Error iniciando pago");
+        setMensaje(message);
 
-        agregarNotificacion(
-          err?.message ?? "No se pudo iniciar el pago",
-          "error"
-        );
+        agregarNotificacion(message, "error");
       }
     },
     [setEstado, setMensaje, setPagoInfo, agregarNotificacion]
@@ -48,6 +52,6 @@ export function usePago() {
   return {
     estado,
     iniciarPago,
-    resetPago, // ← se usará en ResultadoPagoPage
+    resetPago,
   };
 }

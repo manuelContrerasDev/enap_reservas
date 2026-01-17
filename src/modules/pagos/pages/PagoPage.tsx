@@ -7,17 +7,17 @@ import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { CreditCard, Loader2, AlertTriangle } from "lucide-react";
 
-import { useNotificacion } from "@/context/NotificacionContext";
-import { useAuth } from "@/context/auth";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
+import { useAuth } from "@/modules/auth/hooks";
 import { usePago } from "@/modules/pagos/hooks/usePago";
 
-import CheckoutProgress from "@/components/ui/CheckoutProgress";
+import CheckoutProgress from "@/shared/ui/loaders/CheckoutProgress";
 import ResumenReserva from "@/modules/pagos/components/ResumenReserva";
 import TerminosPago from "@/modules/pagos/components/TerminosPago";
 import ModalTerminosEnap from "@/modules/reservas/components/modals/ModalTerminosEnap";
 
-import { ReservaEstado } from "@/types/enums";
-import type { ReservaDTO } from "@/types/ReservaDTO";
+import { ReservaEstado } from "@/shared/types/enums";
+import type { ReservaDTO } from "@/modules/reservas/types/ReservaDTO";
 import { PATHS } from "@/routes/paths";
 
 const API_URL = import.meta.env.VITE_API_URL;

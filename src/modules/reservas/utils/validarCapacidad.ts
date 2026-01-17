@@ -1,5 +1,5 @@
 // src/modules/reservas/utils/validarCapacidad.ts
-import type { ReservaFrontendType } from "@/validators/reserva.schema";
+import type { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
 
 type TipoNotificacion = "error" | "info" | "success";
 
@@ -14,11 +14,11 @@ export function validarCapacidad({
   maxCapacidad,
   notify,
 }: ArgsValidarCapacidad): boolean {
-  const cant = data.cantidadPersonas ?? 1;
+  const cantidad = data.cantidadPersonas ?? 1;
 
-  if (cant > maxCapacidad) {
+  if (cantidad > maxCapacidad) {
     notify(
-      `La cantidad de personas (${cant}) supera el máximo permitido (${maxCapacidad}).`,
+      `La cantidad de personas (${cantidad}) supera el máximo permitido (${maxCapacidad}).`,
       "error"
     );
     return false;

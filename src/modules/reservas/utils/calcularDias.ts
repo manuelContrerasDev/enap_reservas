@@ -1,5 +1,5 @@
 // src/modules/reservas/utils/calcularDias.ts
-import { parseYmdLocal } from "@/lib";
+import { parseYmdLocal } from "@/shared/lib";
 
 export function calcularDias(
   fechaInicio?: string | null,

@@ -1,31 +1,17 @@
 // src/modules/espacios/components/EspaciosHeader.tsx
-import React from "react";
+import React, { memo } from "react";
 import { motion } from "framer-motion";
-import { LayoutGrid, CalendarDays, BadgeCheck } from "lucide-react";
-import type { Role } from "@/types/auth"; // ajusta la ruta si aplica
+import { CalendarDays, BadgeCheck } from "lucide-react";
+
+import type { UserRole } from "@/modules/auth/types/auth.types";
+import { getEspaciosHeaderCopy } from "../helpers/espacios.header.copy";
 
 interface Props {
-  role: Role | null;
+  role: UserRole | null;
 }
 
-export default function EspaciosHeader({ role }: Props) {
-  /* ============================================================
-   * COPY SEGÚN PERFIL (CATÁLOGO PÚBLICO)
-   * ============================================================ */
-  const isSocio = role === "SOCIO";
-  const isExterno = role === "EXTERNO";
-
-  const etiqueta = isSocio
-    ? "Beneficios para Socios"
-    : isExterno
-    ? "Acceso Usuarios Externos"
-    : "Catálogo de Espacios";
-
-  const descripcion = isSocio
-    ? "Accede a tarifas preferenciales y reserva cabañas, quinchos y piscina según tus beneficios como socio."
-    : isExterno
-    ? "Explora los espacios disponibles del centro recreativo y revisa las tarifas para usuarios externos."
-    : "Explora los espacios disponibles del centro recreativo.";
+const EspaciosHeader: React.FC<Props> = ({ role }) => {
+  const { etiqueta, descripcion } = getEspaciosHeaderCopy(role);
 
   return (
     <motion.header
@@ -42,7 +28,6 @@ export default function EspaciosHeader({ role }: Props) {
       "
     >
       <div className="max-w-6xl mx-auto text-center space-y-4">
-        {/* ETIQUETA */}
         <span
           className="
             inline-flex items-center gap-2
@@ -55,17 +40,17 @@ export default function EspaciosHeader({ role }: Props) {
           {etiqueta}
         </span>
 
-        {/* TÍTULO */}
         <h1 className="text-3xl md:text-4xl font-extrabold flex items-center justify-center gap-2">
           <CalendarDays size={26} />
           Espacios Disponibles
         </h1>
 
-        {/* DESCRIPCIÓN */}
         <p className="max-w-xl mx-auto text-white/80 text-sm md:text-base leading-relaxed">
           {descripcion}
         </p>
       </div>
     </motion.header>
   );
-}
+};
+
+export default memo(EspaciosHeader);

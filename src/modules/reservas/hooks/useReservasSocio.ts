@@ -1,9 +1,9 @@
 // src/modules/reservas/hooks/useReservasSocio.ts
 import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/context/auth";
-import { normalizarReserva } from "@/utils/normalizarReserva";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
-import type { ReservaDTO } from "@/types/ReservaDTO";
+import { useAuth } from "@/modules/auth/hooks";
+import { normalizarReserva } from "@/modules/reservas/types/normalizarReserva";
+import type { ReservaFrontend } from "@/modules/reservas/types/ReservaFrontend";
+import type { ReservaDTO } from "@/modules/reservas/types/ReservaDTO";
 
 const API_URL = import.meta.env.VITE_API_URL;
 

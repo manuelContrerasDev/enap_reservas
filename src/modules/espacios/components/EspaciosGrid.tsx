@@ -3,22 +3,34 @@ import React, { Suspense } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 
-import type { EspacioDTO } from "@/types/espacios";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
 
 const EspacioCardSocio = React.lazy(() =>
   import("@/modules/espacios/components/EspacioCardSocio")
 );
 
+const SKELETON_ITEMS = 6;
+
+interface CardProps {
+  espacio: EspacioDTO;
+  fechaFiltro: string | null;
+  ocupadoEnFecha: boolean;
+}
+
 interface Props {
   espacios: EspacioDTO[];
   fechaFiltro: string | null;
   estaOcupadoEnFecha: (id: string, fechaISO: string | null) => boolean;
+
+  /** Card renderizada por el grid (extensible a admin/publico) */
+  CardComponent?: React.ComponentType<CardProps>;
 }
 
 export default function EspaciosGrid({
   espacios,
   fechaFiltro,
   estaOcupadoEnFecha,
+  CardComponent = EspacioCardSocio,
 }: Props) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -49,7 +61,7 @@ export default function EspaciosGrid({
     <Suspense
       fallback={
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 py-10">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: SKELETON_ITEMS }).map((_, i) => (
             <div
               key={i}
               className="h-56 bg-gray-200 rounded-2xl animate-pulse"
@@ -80,7 +92,7 @@ export default function EspaciosGrid({
               }}
               viewport={{ once: true }}
             >
-              <EspacioCardSocio
+              <CardComponent
                 espacio={espacio}
                 fechaFiltro={fechaFiltro}
                 ocupadoEnFecha={ocupado}

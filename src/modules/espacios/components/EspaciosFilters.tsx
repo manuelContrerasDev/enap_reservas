@@ -3,7 +3,14 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Filter } from "lucide-react";
 
-import type { TipoFiltro } from "@/types/espacios";
+import type { TipoFiltro } from "@/modules/espacios/types/espacios";
+
+const TIPO_OPTIONS: { value: TipoFiltro; label: string }[] = [
+  { value: "TODOS", label: "Todos" },
+  { value: "CABANA", label: "Cabañas" },
+  { value: "QUINCHO", label: "Quinchos" },
+  { value: "PISCINA", label: "Piscinas" },
+];
 
 interface Props {
   search: string;
@@ -13,6 +20,9 @@ interface Props {
   setTipo: (value: TipoFiltro) => void;
 
   resetFiltros: () => void;
+
+  /** Punto de extensión futuro (fechas, checkboxes, etc.) */
+  children?: React.ReactNode;
 }
 
 function EspaciosFilters({
@@ -21,7 +31,14 @@ function EspaciosFilters({
   tipo,
   setTipo,
   resetFiltros,
+  children,
 }: Props) {
+  const handleTipoChange = (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    setTipo(e.target.value as TipoFiltro);
+  };
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 10 }}
@@ -77,16 +94,20 @@ function EspaciosFilters({
           <select
             aria-label="Filtrar por tipo de espacio"
             value={tipo}
-            onChange={(e) => setTipo(e.target.value as TipoFiltro)}
+            onChange={handleTipoChange}
             className="bg-transparent text-sm outline-none flex-1 cursor-pointer text-gray-700"
           >
-            <option value="TODOS">Todos</option>
-            <option value="CABANA">Cabañas</option>
-            <option value="QUINCHO">Quinchos</option>
-            <option value="PISCINA">Piscinas</option>
+            {TIPO_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
+
+      {/* EXTENSION SLOT */}
+      {children}
 
       {/* RESET */}
       {(search || tipo !== "TODOS") && (

@@ -8,7 +8,7 @@ import "./index.css";
 import "@/styles/daypicker-compact.css";
 
 
-import { AuthProvider } from "@/context/auth";
+import { AuthProvider } from "@/modules/auth/hooks";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

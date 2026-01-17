@@ -2,7 +2,7 @@ import React from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { MapPinOff } from "lucide-react";
-import { useAuth } from "@/context/auth";
+import { useAuth } from "@/modules/auth/hooks";
 import { PATHS } from "@/routes/paths";
 
 const NotFoundPage: React.FC = () => {

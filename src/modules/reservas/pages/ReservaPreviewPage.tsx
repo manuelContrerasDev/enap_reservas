@@ -1,29 +1,29 @@
 // ============================================================
-// ReservaPreviewPage.tsx — Step 2 (ENAP 2025 · SINCRONIZADO)
+// ReservaPreviewPage.tsx — Step 2 (ENAP 2025 · BLINDADO)
 // ============================================================
 
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 
 import { Loader2, CheckCircle2, ChevronRight, Download } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 
-import { useReserva } from "@/context/ReservaContext";
-import { useNotificacion } from "@/context/NotificacionContext";
-import { useAuth } from "@/context/auth";
+import { useReserva } from "@/modules/reservas/context/ReservaContext";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
+import { useAuth } from "@/modules/auth/hooks";
 
 import ModalTerminosEnap from "@/modules/reservas/components/modals/ModalTerminosEnap";
-import CheckoutProgress from "@/components/ui/CheckoutProgress";
+import CheckoutProgress from "@/shared/ui/loaders/CheckoutProgress";
 
 import { InfoReservaCard } from "@/modules/reservas/components/preview/infoReservaCard";
 import { AsistentesList } from "@/modules/reservas/components/preview/AsistentesList";
 import { TotalCard } from "@/modules/reservas/components/preview/TotalCard";
 import { reservaPermisos } from "@/modules/reservas/utils/reservaPermisos";
 
-import type { ReservaDTO } from "@/types/ReservaDTO";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
-import { normalizarReserva } from "@/utils/normalizarReserva";
+import type { ReservaDTO } from "@/modules/reservas/types/ReservaDTO";
+import type { ReservaFrontend } from "@/modules/reservas/types/ReservaFrontend";
+import { normalizarReserva } from "@/modules/reservas/types/normalizarReserva";
 import { PATHS } from "@/routes/paths";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -44,9 +44,9 @@ export default function ReservaPreviewPage() {
   const [reserva, setReserva] = useState<ReservaFrontend | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ============================================================
-  // FETCH RESERVA (contrato backend → normalización frontend)
-  // ============================================================
+  /* ============================================================
+   * Fetch reserva desde backend (Step 2 = backend source of truth)
+   * ============================================================ */
   const fetchReserva = useCallback(async () => {
     if (!reservaId) {
       agregarNotificacion("No se encontró la reserva.", "error");
@@ -69,8 +69,8 @@ export default function ReservaPreviewPage() {
 
       const json = await resp.json();
 
-      if (!resp.ok || json.ok === false) {
-        throw new Error(json.error || "Error al cargar la reserva");
+      if (!resp.ok || json?.ok === false || !json?.data) {
+        throw new Error(json?.error || "Error al cargar la reserva");
       }
 
       const dto: ReservaDTO = json.data;
@@ -78,7 +78,7 @@ export default function ReservaPreviewPage() {
 
       setReserva(normalizada);
 
-      // Sync liviano al draft (NO reserva completa)
+      // Sync liviano al draft (solo lo necesario para Step 3)
       setReservaActual({
         espacioId: normalizada.espacioId ?? undefined,
         espacioNombre: normalizada.espacioNombre,
@@ -89,8 +89,9 @@ export default function ReservaPreviewPage() {
         cantidadPersonas: normalizada.cantidadPersonas,
       });
     } catch (err) {
-      console.error("❌ Preview Error:", err);
+      console.error("❌ ReservaPreview:", err);
       agregarNotificacion("Error al cargar la reserva.", "error");
+      setReservaActual(null);
       navigate(PATHS.SOCIO_ESPACIOS, { replace: true });
     } finally {
       setLoading(false);
@@ -101,9 +102,9 @@ export default function ReservaPreviewPage() {
     fetchReserva();
   }, [fetchReserva]);
 
-  // ============================================================
-  // LOADING
-  // ============================================================
+  /* ============================================================
+   * Loading / Guard
+   * ============================================================ */
   if (loading || !reserva) {
     return (
       <main className="min-h-[70vh] flex flex-col items-center justify-center">
@@ -115,9 +116,9 @@ export default function ReservaPreviewPage() {
 
   const puedeIrTransferencia = reservaPermisos.puedeVerTransferencia(reserva);
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+  /* ============================================================
+   * Render
+   * ============================================================ */
   return (
     <main className="bg-[#F2F4F7] min-h-screen flex flex-col items-center px-4 pt-2 pb-8">
       <Helmet>
@@ -132,14 +133,13 @@ export default function ReservaPreviewPage() {
         transition={{ duration: 0.35 }}
         className="w-full max-w-lg bg-white rounded-3xl shadow-xl border p-8 space-y-8"
       >
-        {/* HEADER */}
         <header className="text-center space-y-2">
           <CheckCircle2 className="text-green-600 mx-auto" size={46} />
           <h1 className="text-2xl font-extrabold text-[#002E3E]">
             Detalle de tu Reserva
           </h1>
           <p className="text-gray-600 text-sm">
-            Revisa tu información antes de ver los datos de transferencia.
+            Revisa tu información antes de continuar.
           </p>
         </header>
 
@@ -151,7 +151,6 @@ export default function ReservaPreviewPage() {
 
         <TotalCard total={reserva.totalClp} />
 
-        {/* DESCARGAR (FUTURO) */}
         <button
           disabled
           className="w-full bg-gray-100 text-[#002E3E] py-3 rounded-xl font-semibold flex items-center justify-center gap-2 border cursor-not-allowed"
@@ -160,7 +159,7 @@ export default function ReservaPreviewPage() {
           Descargar comprobante (próximamente)
         </button>
 
-        {/* TÉRMINOS */}
+        {/* Términos */}
         <section className="space-y-4">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -184,12 +183,11 @@ export default function ReservaPreviewPage() {
 
           {!puedeIrTransferencia && (
             <p className="text-xs text-gray-500 ml-8">
-              Esta reserva ya no está disponible para transferencia según su estado actual.
+              Esta reserva ya no permite transferencia según su estado.
             </p>
           )}
         </section>
 
-        {/* CTA TRANSFERENCIA */}
         <button
           onClick={() => {
             if (!aceptaTerminos) {
@@ -201,14 +199,17 @@ export default function ReservaPreviewPage() {
             }
 
             if (!puedeIrTransferencia) {
-              agregarNotificacion("Esta reserva ya no permite transferencia.", "info");
+              agregarNotificacion(
+                "Esta reserva ya no permite transferencia.",
+                "info"
+              );
               return;
             }
 
             navigate(`${PATHS.RESERVA_TRANSFERENCIA}?reservaId=${reserva.id}`);
           }}
           disabled={!aceptaTerminos || !puedeIrTransferencia}
-          className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 ${
             aceptaTerminos && puedeIrTransferencia
               ? "bg-[#DEC01F] hover:bg-[#E5D14A] text-[#002E3E]"
               : "bg-gray-200 text-gray-500 cursor-not-allowed"

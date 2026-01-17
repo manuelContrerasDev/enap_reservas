@@ -1,4 +1,4 @@
-import type { EspacioDTO } from "@/types/espacios";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
 import type { BloqueFecha } from "../utils/validarFechas";
 
 interface Deps {

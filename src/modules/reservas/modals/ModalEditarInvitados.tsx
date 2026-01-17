@@ -1,8 +1,8 @@
 // src/modules/reservas/components/modals/ModalEditarInvitados.tsx
 import React, { useMemo, useState } from "react";
 import { X, Plus, Trash2, Loader2 } from "lucide-react";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
-import { useNotificacion } from "@/context/NotificacionContext";
+import type { ReservaFrontend } from "@/modules/reservas/types/ReservaFrontend";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
 
 type InvitadoForm = {
   id: string;

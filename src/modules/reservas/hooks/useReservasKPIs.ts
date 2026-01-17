@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { ReservaFrontend } from "@/types/ReservaFrontend";
-import { ReservaEstado } from "@/types/enums";
+import type { ReservaFrontend } from "@/modules/reservas/types/ReservaFrontend";
+import { ReservaEstado } from "@/shared/types/enums";
 
 
 export function useReservasKPIs(reservas: ReservaFrontend[] = []) {

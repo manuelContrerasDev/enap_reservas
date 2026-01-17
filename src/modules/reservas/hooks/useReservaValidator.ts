@@ -1,8 +1,9 @@
 // src/modules/reservas/hooks/useReservaValidator.ts
 import { useCallback } from "react";
 
-import type { ReservaFrontendType } from "@/validators/reserva.schema";
-import type { EspacioDTO } from "@/types/espacios";
+import type { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
+import type { NotificacionContextType } from "@/shared/providers/NotificacionProvider";
 
 import {
   validarFechasConBloques,
@@ -10,15 +11,12 @@ import {
 } from "../utils/validarFechas";
 import { validarCapacidad } from "../utils/validarCapacidad";
 
-type TipoNotificacion = "error" | "info" | "success";
-
 interface ArgsUseReservaValidator {
   espacio: EspacioDTO | null;
   bloquesOcupados: BloqueFecha[];
   maxCapacidad: number;
-  notify: (mensaje: string, tipo: TipoNotificacion) => void;
+  notify: NotificacionContextType["agregarNotificacion"];
 }
-
 
 export function useReservaValidator({
   espacio,

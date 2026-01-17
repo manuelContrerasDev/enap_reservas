@@ -10,9 +10,7 @@ import {
   Info,
 } from "lucide-react";
 
-import type { EspacioDTO } from "@/types/espacios";
-import { useEspacios } from "@/context/EspaciosContext";
-import { useNotificacion } from "@/context/NotificacionContext";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
 
 /* ============================================================
  * Utils
@@ -41,45 +39,33 @@ interface Props {
   espacio: EspacioDTO;
   onEditar: (espacio: EspacioDTO) => void;
   onEliminar: (id: string) => void;
+  onToggleActivo: (id: string) => Promise<void>;
+  loading?: boolean;
 }
 
 /* ============================================================
  * Component
  * ============================================================ */
 const EspacioCardAdmin: React.FC<Props> = memo(
-  ({ espacio, onEditar, onEliminar }) => {
-    const { toggleActivo } = useEspacios();
-    const { agregarNotificacion } = useNotificacion();
+  ({ espacio, onEditar, onEliminar, onToggleActivo, loading = false }) => {
+    const handleToggle = useCallback(() => {
+      if (loading) return;
+      onToggleActivo(espacio.id);
+    }, [espacio.id, onToggleActivo, loading]);
 
-    /* --------------------------------------------------------
-     * Toggle activo
-     * -------------------------------------------------------- */
-    const handleToggle = useCallback(async () => {
-      try {
-        await toggleActivo(espacio.id);
-        agregarNotificacion(
-          `Espacio ${
-            espacio.activo ? "desactivado" : "activado"
-          } correctamente`,
-          "success"
-        );
-      } catch {
-        agregarNotificacion("❌ Error actualizando estado", "error");
-      }
-    }, [espacio.id, espacio.activo, toggleActivo, agregarNotificacion]);
-
-    /* --------------------------------------------------------
-     * Eliminar (soft delete)
-     * -------------------------------------------------------- */
     const handleEliminar = useCallback(() => {
+      if (loading) return;
       onEliminar(espacio.id);
-    }, [espacio.id, onEliminar]);
+    }, [espacio.id, onEliminar, loading]);
 
     return (
-      <motion.div
-        className="bg-white border border-gray-200 rounded-xl shadow-sm
-                   p-5 flex flex-col gap-4 hover:shadow-md transition-all"
+      <motion.article
+        className="
+          bg-white border border-gray-200 rounded-xl shadow-sm
+          p-5 flex flex-col gap-4 hover:shadow-md transition-all
+        "
         whileHover={{ scale: 1.01 }}
+        aria-busy={loading}
       >
         {/* HEADER */}
         <div className="flex justify-between items-start">
@@ -166,9 +152,11 @@ const EspacioCardAdmin: React.FC<Props> = memo(
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={() => onEditar(espacio)}
+            disabled={loading}
+            aria-label="Editar espacio"
             className="flex items-center gap-2 bg-[#DEC01F] text-[#002E3E]
                        py-2 px-4 rounded-lg hover:bg-[#E8CF4F]
-                       text-sm font-semibold"
+                       text-sm font-semibold disabled:opacity-60"
           >
             <Edit size={16} /> Editar
           </motion.button>
@@ -176,8 +164,10 @@ const EspacioCardAdmin: React.FC<Props> = memo(
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleToggle}
+            disabled={loading}
+            aria-label="Cambiar estado del espacio"
             className={`flex items-center gap-2 py-2 px-4 rounded-lg
-              text-sm font-semibold ${
+              text-sm font-semibold disabled:opacity-60 ${
                 espacio.activo
                   ? "bg-red-100 text-red-600 hover:bg-red-200"
                   : "bg-green-100 text-green-700 hover:bg-green-200"
@@ -190,14 +180,16 @@ const EspacioCardAdmin: React.FC<Props> = memo(
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleEliminar}
+            disabled={loading}
+            aria-label="Eliminar espacio"
             className="flex items-center gap-2 bg-red-500 text-white
                        py-2 px-4 rounded-lg hover:bg-red-600
-                       text-sm font-semibold"
+                       text-sm font-semibold disabled:opacity-60"
           >
             <Trash2 size={16} /> Eliminar
           </motion.button>
         </div>
-      </motion.div>
+      </motion.article>
     );
   }
 );

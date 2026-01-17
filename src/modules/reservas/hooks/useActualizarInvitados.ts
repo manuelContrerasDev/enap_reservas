@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { actualizarInvitados } from "@/lib/api/reservas";
-import { useNotificacion } from "@/context/NotificacionContext";
+import { actualizarInvitados } from "@/modules/reservas/api/reservas.api";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
 
 export function useActualizarInvitados() {
   const [loading, setLoading] = useState(false);

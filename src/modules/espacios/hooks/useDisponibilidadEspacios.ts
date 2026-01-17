@@ -1,16 +1,12 @@
 // src/modules/espacios/hooks/useDisponibilidadEspacios.ts
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fechaLocal } from "@/shared/lib/date";
-import type { EspacioDTO } from "@/types/espacios";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
+import type { BloqueFecha } from "../types/disponibilidad2";
 
 /* ============================================================
- * Tipos
+ * Opciones del hook
  * ============================================================ */
-export type BloqueFecha = {
-  fechaInicio: string;
-  fechaFin: string;
-};
-
 interface UseDisponibilidadOptions {
   espacios: EspacioDTO[];
   loadingEspacios: boolean;
@@ -18,7 +14,7 @@ interface UseDisponibilidadOptions {
 }
 
 /* ============================================================
- * Normalización segura de fechas (LOCAL MIDNIGHT)
+ * Utils
  * ============================================================ */
 const normalizarFecha = (iso: string): Date => {
   const d = fechaLocal(iso);
@@ -43,6 +39,14 @@ export function useDisponibilidadEspacios({
   >({});
 
   /* ----------------------------------------------------------
+   * Fecha normalizada (single source of truth)
+   * ---------------------------------------------------------- */
+  const fechaTarget = useMemo(
+    () => (fechaFiltro ? normalizarFecha(fechaFiltro) : null),
+    [fechaFiltro]
+  );
+
+  /* ----------------------------------------------------------
    * Reset completo
    * ---------------------------------------------------------- */
   const limpiarDisponibilidad = useCallback(() => {
@@ -55,37 +59,34 @@ export function useDisponibilidadEspacios({
   /* ----------------------------------------------------------
    * Cargar disponibilidad de TODOS los espacios
    * ---------------------------------------------------------- */
-  const cargarDisponibilidad = useCallback(
-    async (fechaISO: string | null) => {
-      if (!fechaISO || espacios.length === 0) return;
+  const cargarDisponibilidad = useCallback(async () => {
+    if (!fechaFiltro || espacios.length === 0) return;
 
-      setLoadingDisponibilidad(true);
+    setLoadingDisponibilidad(true);
 
-      try {
-        const resultados = await Promise.all(
-          espacios.map(async (esp) => {
-            const bloques = await obtenerDisponibilidad(esp.id);
-            return { id: esp.id, bloques };
-          })
-        );
+    try {
+      const resultados = await Promise.all(
+        espacios.map(async (esp) => ({
+          id: esp.id,
+          bloques: await obtenerDisponibilidad(esp.id),
+        }))
+      );
 
-        const map = resultados.reduce<Record<string, BloqueFecha[]>>(
-          (acc, item) => {
-            acc[item.id] = item.bloques;
-            return acc;
-          },
-          {}
-        );
+      const map = resultados.reduce<Record<string, BloqueFecha[]>>(
+        (acc, item) => {
+          acc[item.id] = item.bloques;
+          return acc;
+        },
+        {}
+      );
 
-        setDisponibilidadMap(map);
-      } catch (err) {
-        console.error("❌ Error al obtener disponibilidad:", err);
-      } finally {
-        setLoadingDisponibilidad(false);
-      }
-    },
-    [espacios, obtenerDisponibilidad]
-  );
+      setDisponibilidadMap(map);
+    } catch (err) {
+      console.error("❌ Error al obtener disponibilidad:", err);
+    } finally {
+      setLoadingDisponibilidad(false);
+    }
+  }, [fechaFiltro, espacios, obtenerDisponibilidad]);
 
   /* ----------------------------------------------------------
    * Cambio de fecha
@@ -97,19 +98,22 @@ export function useDisponibilidadEspacios({
       setDisponibilidadMap({});
 
       if (!fechaISO) return;
-      await cargarDisponibilidad(fechaISO);
+      await cargarDisponibilidad();
     },
     [cargarDisponibilidad]
   );
 
   /* ----------------------------------------------------------
-   * Re-cargar si cambian los espacios
+   * Re-carga defensiva
    * ---------------------------------------------------------- */
   useEffect(() => {
-    if (fechaFiltro && !loadingEspacios && espacios.length > 0) {
-      if (Object.keys(disponibilidadMap).length === 0) {
-        void cargarDisponibilidad(fechaFiltro);
-      }
+    if (
+      fechaFiltro &&
+      !loadingEspacios &&
+      espacios.length > 0 &&
+      Object.keys(disponibilidadMap).length === 0
+    ) {
+      void cargarDisponibilidad();
     }
   }, [
     fechaFiltro,
@@ -120,28 +124,26 @@ export function useDisponibilidadEspacios({
   ]);
 
   /* ----------------------------------------------------------
-   * ¿Espacio ocupado en esa fecha?
+   * ¿Espacio ocupado en fecha?
    * ---------------------------------------------------------- */
   const estaOcupadoEnFecha = useCallback(
-    (espacioId: string, fechaISO: string | null) => {
-      if (!fechaISO) return false;
+    (espacioId: string, _fechaISO?: string | null) => {
+      if (!fechaTarget) return false;
 
       const bloques = disponibilidadMap[espacioId];
-      if (!bloques || bloques.length === 0) return false;
-
-      const target = normalizarFecha(fechaISO);
+      if (!bloques?.length) return false;
 
       return bloques.some((b) => {
         const inicio = normalizarFecha(b.fechaInicio);
         const fin = normalizarFecha(b.fechaFin);
-        return target >= inicio && target < fin;
+        return fechaTarget >= inicio && fechaTarget < fin;
       });
     },
-    [disponibilidadMap]
+    [disponibilidadMap, fechaTarget]
   );
 
   /* ----------------------------------------------------------
-   * Contador global por fecha (calendario)
+   * Métrica global
    * ---------------------------------------------------------- */
   const contarOcupadosEnFecha = useCallback(
     (fechaISO: string) =>

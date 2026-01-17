@@ -9,16 +9,16 @@ import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
 import { ArrowLeft, Info, Loader2 } from "lucide-react";
 
-import CheckoutProgress from "@/components/ui/CheckoutProgress";
-import { useReserva } from "@/context/ReservaContext";
-import { useNotificacion } from "@/context/NotificacionContext";
-import { useAuth } from "@/context/auth";
+import CheckoutProgress from "@/shared/ui/loaders/CheckoutProgress";
+import { useReserva } from "@/modules/reservas/context/ReservaContext";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
+import { useAuth } from "@/modules/auth/hooks";
 import { PATHS } from "@/routes/paths";
 
-import type { ReservaDTO } from "@/types/ReservaDTO";
-import { normalizarReserva } from "@/utils/normalizarReserva";
+import type { ReservaDTO } from "@/modules/reservas/types/ReservaDTO";
+import { normalizarReserva } from "@/modules/reservas/types/normalizarReserva";
 
-// ✅ Imagen oficial desde assets
+// Imagen oficial
 import datosTransferencia from "@/assets/datosTransferencia.png";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -32,10 +32,9 @@ export default function TransferenciaPage() {
   const { token } = useAuth();
 
   const reservaId = params.get("reservaId");
-
   const [loading, setLoading] = useState(false);
 
-  const tieneDraft = !!reservaActual;
+  const tieneDraft = Boolean(reservaActual);
 
   const totalFmt = useMemo(() => {
     if (typeof reservaActual?.total !== "number") return null;
@@ -43,12 +42,11 @@ export default function TransferenciaPage() {
   }, [reservaActual?.total]);
 
   // ============================================================
-  // Fetch reserva (solo si entran por link/refresh sin draft)
+  // 🔁 Hidratación defensiva desde backend (deep link / refresh)
   // ============================================================
   const hydrateFromServer = useCallback(async () => {
     if (tieneDraft) return;
-
-    if (!reservaId) return; // sin id, no se puede hidratar
+    if (!reservaId) return;
 
     if (!token) {
       agregarNotificacion("Sesión expirada. Inicia sesión nuevamente.", "error");
@@ -72,7 +70,7 @@ export default function TransferenciaPage() {
       const dto: ReservaDTO = json.data;
       const normal = normalizarReserva(dto);
 
-      // Hydrate draft mínimo (wizard-safe)
+      // 🔒 Hydrate draft mínimo (wizard-safe)
       setReservaActual({
         espacioId: normal.espacioId ?? undefined,
         espacioNombre: normal.espacioNombre,
@@ -82,9 +80,12 @@ export default function TransferenciaPage() {
         total: normal.totalClp,
         cantidadPersonas: normal.cantidadPersonas,
       });
-    } catch (e) {
-      console.error("❌ Transferencia hydrate:", e);
-      agregarNotificacion("No se pudo cargar la información de la reserva.", "error");
+    } catch (err) {
+      console.error("❌ Transferencia hydrate:", err);
+      agregarNotificacion(
+        "No se pudo cargar la información de la reserva.",
+        "error"
+      );
       navigate(PATHS.SOCIO_ESPACIOS, { replace: true });
     } finally {
       setLoading(false);
@@ -103,20 +104,22 @@ export default function TransferenciaPage() {
   }, [hydrateFromServer]);
 
   // ============================================================
-  // Guard final — si no hay draft y no se puede hidratar
+  // 🛑 Guard final: sin draft y sin posibilidad de hidratar
   // ============================================================
   if (!tieneDraft) {
     if (loading) {
       return (
-        <main className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+        <main className="min-h-[70vh] flex flex-col items-center justify-center px-4">
           <Loader2 className="animate-spin text-[#002E3E]" size={44} />
-          <p className="text-gray-600 text-sm mt-3">Cargando información…</p>
+          <p className="text-gray-600 text-sm mt-3">
+            Cargando información…
+          </p>
         </main>
       );
     }
 
     return (
-      <main className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+      <main className="min-h-[70vh] flex flex-col items-center justify-center px-4 text-center">
         <p className="text-gray-600 mb-4">
           No se encontró información de la reserva.
         </p>
@@ -129,6 +132,11 @@ export default function TransferenciaPage() {
       </main>
     );
   }
+
+  // ============================================================
+  // 🔒 Narrow explícito (TypeScript SAFE)
+  // ============================================================
+  const reserva = reservaActual!;
 
   // ============================================================
   // RENDER
@@ -162,13 +170,13 @@ export default function TransferenciaPage() {
         {/* INFO RESERVA */}
         <section className="bg-gray-50 rounded-xl p-4 text-sm space-y-2">
           <p>
-            <strong>Espacio:</strong> {reservaActual.espacioNombre}
+            <strong>Espacio:</strong> {reserva.espacioNombre}
           </p>
 
-          {reservaActual.fechaInicio && reservaActual.fechaFin && (
+          {reserva.fechaInicio && reserva.fechaFin && (
             <p>
-              <strong>Fechas:</strong> {reservaActual.fechaInicio} →{" "}
-              {reservaActual.fechaFin}
+              <strong>Fechas:</strong> {reserva.fechaInicio} →{" "}
+              {reserva.fechaFin}
             </p>
           )}
 
@@ -199,7 +207,6 @@ export default function TransferenciaPage() {
             </p>
           </div>
 
-          {/* IMAGEN OFICIAL */}
           <img
             src={datosTransferencia}
             alt="Datos transferencia ENAP"

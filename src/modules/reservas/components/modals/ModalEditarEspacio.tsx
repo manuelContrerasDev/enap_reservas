@@ -3,16 +3,16 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, RefreshCw, Image as ImageIcon } from "lucide-react";
 
-import { useEspacios } from "@/context/EspaciosContext";
-import { useNotificacion } from "@/context/NotificacionContext";
+import { useEspacios } from "@/modules/espacios/context/EspaciosContext";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
 
 import type {
   EspacioDTO,
   ActualizarEspacioDTO,
-} from "@/types/espacios";
+} from "@/modules/espacios/types/espacios";
 
-import { InputEnap } from "@/components/ui/InputEnap";
-import { SelectEnap } from "@/components/ui/SelectEnap";
+import { InputEnap } from "@/shared/ui/loaders/InputEnap";
+import { SelectEnap } from "@/shared/ui/loaders/SelectEnap";
 
 import logoEnap from "@/assets/logo-enap.png";
 

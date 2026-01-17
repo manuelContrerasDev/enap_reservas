@@ -1,7 +1,7 @@
 import React from "react";
-import { AuthProvider } from "@/context/auth";
-import { ThemeProvider } from "@/context/ThemeContext";
-import { NotificacionProvider } from "@/context/NotificacionContext";
+import { AuthProvider } from "@/modules/auth/context/AuthContext";
+import { ThemeProvider } from "@/shared/providers/ThemeProvider";
+import { NotificacionProvider } from "@/shared/providers/NotificacionProvider";
 
 interface Props {
   children: React.ReactNode;

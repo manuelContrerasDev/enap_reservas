@@ -1,27 +1,24 @@
 // ============================================================
-// DatosSocioForm.tsx — ENAP 2025 (Auditado y sincronizado)
+// DatosSocioForm.tsx — ENAP 2025 (FINAL SYNC)
 // ============================================================
 
 import React from "react";
 import {
   UseFormRegister,
-  UseFormWatch,
   FieldErrors,
   UseFormSetValue,
 } from "react-hook-form";
 
-import { ReservaFrontendType } from "@/validators/reserva.schema";
+import { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
 
 interface Props {
   register: UseFormRegister<ReservaFrontendType>;
-  watch: UseFormWatch<ReservaFrontendType>;
   errors: FieldErrors<ReservaFrontendType>;
   setValue: UseFormSetValue<ReservaFrontendType>;
 }
 
 const DatosSocioForm: React.FC<Props> = ({
   register,
-  watch,
   errors,
   setValue,
 }) => {
@@ -40,22 +37,18 @@ const DatosSocioForm: React.FC<Props> = ({
 
       {/* ============================= Nombre ============================= */}
       <div className="flex flex-col gap-1">
-        <label htmlFor="nombreSocio" className="text-sm font-medium text-gray-700">
+        <label className="text-sm font-medium text-gray-700">
           Nombre completo
         </label>
 
         <input
-          id="nombreSocio"
           type="text"
-          autoComplete="name"
           placeholder="Ej: Felipe Contreras Soto"
           {...register("nombreSocio", {
             onChange: (e) => update("nombreSocio", e.target.value),
           })}
-          className="
-            rounded-lg border px-4 py-3 text-sm shadow-sm
-            focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-          "
+          className="rounded-lg border px-4 py-3 text-sm shadow-sm
+                     focus:ring-2 focus:ring-enap-cyan"
         />
 
         {errors.nombreSocio && (
@@ -67,24 +60,19 @@ const DatosSocioForm: React.FC<Props> = ({
 
       {/* ======================= RUT + Teléfono ======================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {/* RUT */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="rutSocio" className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-gray-700">
             RUT del socio
           </label>
 
           <input
-            id="rutSocio"
             type="text"
-            autoComplete="off"
             placeholder="12.345.678-9"
             {...register("rutSocio", {
               onChange: (e) => update("rutSocio", e.target.value),
             })}
-            className="
-              rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-            "
+            className="rounded-lg border px-4 py-3 text-sm shadow-sm
+                       focus:ring-2 focus:ring-enap-cyan"
           />
 
           {errors.rutSocio && (
@@ -94,27 +82,19 @@ const DatosSocioForm: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Teléfono */}
         <div className="flex flex-col gap-1">
-          <label
-            htmlFor="telefonoSocio"
-            className="text-sm font-medium text-gray-700"
-          >
+          <label className="text-sm font-medium text-gray-700">
             Teléfono
           </label>
 
           <input
-            id="telefonoSocio"
             type="tel"
-            autoComplete="tel"
-            placeholder="Ej: +56 9 8765 4321"
+            placeholder="+56 9 8765 4321"
             {...register("telefonoSocio", {
               onChange: (e) => update("telefonoSocio", e.target.value),
             })}
-            className="
-              rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-            "
+            className="rounded-lg border px-4 py-3 text-sm shadow-sm
+                       focus:ring-2 focus:ring-enap-cyan"
           />
 
           {errors.telefonoSocio && (
@@ -127,24 +107,19 @@ const DatosSocioForm: React.FC<Props> = ({
 
       {/* ============================ Correos ============================ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {/* Correo ENAP */}
         <div className="flex flex-col gap-1">
-          <label htmlFor="correoEnap" className="text-sm font-medium text-gray-700">
+          <label className="text-sm font-medium text-gray-700">
             Correo ENAP
           </label>
 
           <input
-            id="correoEnap"
             type="email"
-            autoComplete="email"
             placeholder="usuario@enap.cl"
             {...register("correoEnap", {
               onChange: (e) => update("correoEnap", e.target.value),
             })}
-            className="
-              rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-            "
+            className="rounded-lg border px-4 py-3 text-sm shadow-sm
+                       focus:ring-2 focus:ring-enap-cyan"
           />
 
           {errors.correoEnap && (
@@ -154,27 +129,19 @@ const DatosSocioForm: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Correo Personal */}
         <div className="flex flex-col gap-1">
-          <label
-            htmlFor="correoPersonal"
-            className="text-sm font-medium text-gray-700"
-          >
+          <label className="text-sm font-medium text-gray-700">
             Correo personal (opcional)
           </label>
 
           <input
-            id="correoPersonal"
             type="email"
-            autoComplete="email"
-            placeholder="ej: felipe.c@gmail.com"
+            placeholder="ej: felipe@gmail.com"
             {...register("correoPersonal", {
               onChange: (e) => update("correoPersonal", e.target.value),
             })}
-            className="
-              rounded-lg border px-4 py-3 text-sm shadow-sm
-              focus:ring-2 focus:ring-enap-cyan focus:border-enap-cyan
-            "
+            className="rounded-lg border px-4 py-3 text-sm shadow-sm
+                       focus:ring-2 focus:ring-enap-cyan"
           />
 
           {errors.correoPersonal && (

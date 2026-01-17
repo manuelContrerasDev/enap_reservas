@@ -21,18 +21,18 @@ import ModalAsistentes from "@/modules/reservas/components/reserva/ModalAsistent
 import { ReservaEspacioCard } from "@/modules/reservas/components/reserva/ReservaEspacioCard";
 import { TotalReserva } from "@/modules/reservas/components/reserva/TotalReservaForm";
 
-import CheckoutProgress from "@/components/ui/CheckoutProgress";
+import CheckoutProgress from "@/shared/ui/loaders/CheckoutProgress";
 import { PATHS } from "@/routes/paths";
 
-import type { ReservaFrontendType } from "@/validators/reserva.schema";
+import type { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
 
 const ReservaPage: React.FC = () => {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
 
-  // ============================================================
-  // Hook maestro (carga + lógica de reserva)
-  // ============================================================
+  /* ============================================================
+   * Hook maestro
+   * ============================================================ */
   const {
     loading,
     error,
@@ -57,31 +57,15 @@ const ReservaPage: React.FC = () => {
     onSubmit,
   } = useReservaForm();
 
-  // ============================================================
-  // Estado local submit (blindaje UX)
-  // ============================================================
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  // Submit tipado
-  const submitHandler: SubmitHandler<ReservaFrontendType> = async (data) => {
-    if (isSubmitting) return;
-    try {
-      setIsSubmitting(true);
-      await onSubmit(data);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // ============================================================
-  // Modal asistentes
-  // ============================================================
+  /* ============================================================
+   * Modal asistentes
+   * ============================================================ */
   const [modalAsistentesOpen, setModalAsistentesOpen] =
     React.useState(false);
 
-  // ============================================================
-  // Datos derivados
-  // ============================================================
+  /* ============================================================
+   * Datos derivados
+   * ============================================================ */
   const cantidadPersonas = watch("cantidadPersonas") ?? 0;
   const cantidadPersonasPiscina = watch("cantidadPersonasPiscina") ?? 0;
   const invitados = watch("invitados") ?? [];
@@ -91,15 +75,19 @@ const ReservaPage: React.FC = () => {
   const invitadosNormalizados = React.useMemo(
     () =>
       invitados.map((i) => ({
-        ...i,
+        nombre: i.nombre,
+        rut: i.rut,
+        edad: i.edad,
         esPiscina: Boolean(i.esPiscina),
       })),
     [invitados]
   );
 
-  // ============================================================
-  // Loading / Error inicial
-  // ============================================================
+  const admitePiscina = espacio?.tipo === "PISCINA";
+
+  /* ============================================================
+   * Loading / Error
+   * ============================================================ */
   if (loading && !espacio) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-[#002E3E]">
@@ -129,9 +117,9 @@ const ReservaPage: React.FC = () => {
     );
   }
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+  /* ============================================================
+   * RENDER
+   * ============================================================ */
   return (
     <main className="flex min-h-[calc(100vh-120px)] flex-col items-center bg-[#F4F7F9] px-6 pt-3 pb-12">
       <CheckoutProgress step={1} />
@@ -159,23 +147,18 @@ const ReservaPage: React.FC = () => {
 
           {/* PANEL DERECHO */}
           <form
-            onSubmit={handleSubmit(submitHandler)}
+            onSubmit={handleSubmit(onSubmit as SubmitHandler<ReservaFrontendType>)}
             className="space-y-6 p-6 bg-white shadow-md border border-gray-200 rounded-xl"
           >
             <motion.div
-              initial={
-                !prefersReducedMotion ? { opacity: 0, x: 20 } : undefined
-              }
-              animate={
-                !prefersReducedMotion ? { opacity: 1, x: 0 } : undefined
-              }
+              initial={!prefersReducedMotion ? { opacity: 0, x: 20 } : undefined}
+              animate={!prefersReducedMotion ? { opacity: 1, x: 0 } : undefined}
               transition={{ duration: 0.4 }}
             >
               <h3 className="text-2xl font-bold text-[#002E3E] mb-4">
                 Datos de la Reserva
               </h3>
 
-              {/* FECHAS */}
               <FechasForm
                 register={register}
                 watch={watch}
@@ -183,10 +166,8 @@ const ReservaPage: React.FC = () => {
                 errors={errors}
                 minDate={today}
                 espacioTipo={espacio.tipo}
-                bloquesOcupados={bloquesOcupados}
               />
 
-              {/* PERSONAS */}
               <PersonasForm
                 register={register}
                 watch={watch}
@@ -195,8 +176,7 @@ const ReservaPage: React.FC = () => {
                 maxCap={maxCap}
               />
 
-              {/* PERSONAS PISCINA */}
-              {espacio.tipo === "PISCINA" && (
+              {admitePiscina && cantidadPersonasPiscina > 0 && (
                 <PersonasPiscinaForm
                   register={register}
                   watch={watch}
@@ -206,7 +186,6 @@ const ReservaPage: React.FC = () => {
                 />
               )}
 
-              {/* ASISTENTES */}
               {cantidadPersonas > 0 && (
                 <div className="mt-2 space-y-1">
                   <button
@@ -229,23 +208,9 @@ const ReservaPage: React.FC = () => {
                 </div>
               )}
 
-              {/* DATOS SOCIO */}
-              <DatosSocioForm
-                register={register}
-                watch={watch}
-                setValue={setValue}
-                errors={errors}
-              />
+              <DatosSocioForm {...{ register, watch, setValue, errors }} />
+              <UsoReservaForm {...{ register, watch, setValue, errors }} />
 
-              {/* USO RESERVA */}
-              <UsoReservaForm
-                register={register}
-                watch={watch}
-                setValue={setValue}
-                errors={errors}
-              />
-
-              {/* TOTAL + TÉRMINOS */}
               <div className="space-y-4 border-t pt-4">
                 <TotalReserva
                   dias={dias}
@@ -254,24 +219,19 @@ const ReservaPage: React.FC = () => {
                   pagoPiscina={pagoPiscina}
                   total={total}
                 />
-
-                <TerminosAceptacion
-                  register={register}
-                  errors={errors}
-                />
+                <TerminosAceptacion register={register} errors={errors} />
               </div>
 
-              {/* SUBMIT */}
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={loading}
                 className={`w-full py-4 rounded-lg font-bold text-white bg-[#002E3E] ${
-                  isSubmitting
+                  loading
                     ? "opacity-50 cursor-not-allowed"
                     : "hover:bg-[#01384A]"
                 }`}
               >
-                {isSubmitting ? (
+                {loading ? (
                   <span className="flex items-center gap-2 justify-center">
                     <Loader2 className="animate-spin" size={20} />
                     Enviando…
@@ -285,13 +245,12 @@ const ReservaPage: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL ASISTENTES */}
       <ModalAsistentes
         isOpen={modalAsistentesOpen}
         onClose={() => setModalAsistentesOpen(false)}
         initial={invitadosNormalizados}
         maxCantidad={cantidadPersonas}
-        maxPiscina={cantidadPersonasPiscina}
+        admitePiscina={admitePiscina}
         onSave={(lista) =>
           setValue("invitados", lista, {
             shouldDirty: true,

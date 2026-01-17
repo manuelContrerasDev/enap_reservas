@@ -1,7 +1,8 @@
-import React from "react";
+// src/modules/espacios/components/EspaciosEmptyState.tsx
+import React, { memo } from "react";
 import { AlertCircle } from "lucide-react";
 
-type Variant = "info" | "warning" | "empty";
+export type EmptyStateVariant = "info" | "warning" | "empty";
 
 interface Props {
   title: string;
@@ -12,16 +13,16 @@ interface Props {
   actionLabel?: string;
   onAction?: () => void;
 
-  variant?: Variant;
+  variant?: EmptyStateVariant;
 }
 
-const VARIANT_COLOR: Record<Variant, string> = {
+const VARIANT_COLOR: Record<EmptyStateVariant, string> = {
   info: "#005D73",
   warning: "#DCAB12",
   empty: "#9CA3AF",
-};
+} as const;
 
-export default function EspaciosEmptyState({
+function EspaciosEmptyState({
   title,
   message,
   icon,
@@ -29,31 +30,37 @@ export default function EspaciosEmptyState({
   onAction,
   variant = "info",
 }: Props) {
+  const canAction = Boolean(actionLabel && onAction);
+
   return (
     <div
       role="status"
+      aria-live="polite"
       className="flex flex-col items-center justify-center py-20 space-y-4 text-center"
     >
       {/* ICONO */}
-      <div style={{ color: VARIANT_COLOR[variant] }}>
+      <div
+        aria-hidden="true"
+        style={{ color: VARIANT_COLOR[variant] }}
+        className="flex items-center justify-center"
+      >
         {icon || <AlertCircle size={56} />}
       </div>
 
       {/* TÍTULO */}
-      <h3 className="text-xl font-semibold text-gray-800">
-        {title}
-      </h3>
+      <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
 
       {/* MENSAJE */}
-      {message && (
+      {message ? (
         <p className="text-sm text-gray-600 max-w-sm leading-relaxed">
           {message}
         </p>
-      )}
+      ) : null}
 
       {/* ACCIÓN */}
-      {actionLabel && onAction && (
+      {canAction ? (
         <button
+          type="button"
           onClick={onAction}
           className="
             mt-3 px-5 py-2 rounded-xl text-sm font-semibold
@@ -64,7 +71,9 @@ export default function EspaciosEmptyState({
         >
           {actionLabel}
         </button>
-      )}
+      ) : null}
     </div>
   );
 }
+
+export default memo(EspaciosEmptyState);

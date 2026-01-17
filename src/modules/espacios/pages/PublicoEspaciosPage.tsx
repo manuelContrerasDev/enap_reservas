@@ -1,36 +1,73 @@
 // src/modules/espacios/pages/PublicoEspaciosPage.tsx
-import React, { useMemo, useCallback } from "react";
+import React, { memo, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
 
 import EspaciosHeader from "@/modules/espacios/components/EspaciosHeader";
 import EspaciosFilters from "@/modules/espacios/components/EspaciosFilters";
 import EspaciosGrid from "@/modules/espacios/components/EspaciosGrid";
 import EspaciosEmptyState from "@/modules/espacios/components/EspaciosEmptyState";
+import ProductoEspacioCard from "@/modules/espacios/components/ProductoEspacioCard";
 
-import { useEspacios } from "@/context/EspaciosContext";
-import { useAuth } from "@/context/auth";
+import { useEspacios } from "@/modules/espacios/context/EspaciosContext";
+import { useAuth } from "@/modules/auth/hooks";
 import { useEspaciosFiltros } from "@/modules/espacios/hooks/useEspaciosFiltros";
 
-import type { EspacioDTO } from "@/types/espacios";
+import { resolverPrecioPorRol } from "@/modules/espacios/helpers";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
+import { PATHS } from "@/routes/paths";
 
 const PublicoEspaciosPage: React.FC = () => {
   const { espacios, loading } = useEspacios();
   const { role } = useAuth();
+  const navigate = useNavigate();
 
   /* ============================================================
-   * Resolver de precio según rol (CATÁLOGO)
+   * Precio por rol (visual)
    * ============================================================ */
   const resolverPrecio = useCallback(
-    (espacio: EspacioDTO) =>
-      role === "EXTERNO"
-        ? espacio.precioBaseExterno
-        : espacio.precioBaseSocio,
+    (espacio: EspacioDTO) => resolverPrecioPorRol(espacio, role),
     [role]
   );
 
   /* ============================================================
-   * Filtros (catálogo público, sin fechas)
+   * Dummy disponibilidad (catálogo)
+   * ============================================================ */
+  const estaOcupadoDummy = useCallback(
+    (_id: string, _fecha: string | null) => false,
+    []
+  );
+
+  /* ============================================================
+   * Card Adapter (V2)
+   * ============================================================ */
+  const CardProductoAdapter = ({
+    espacio,
+    fechaFiltro,
+    ocupadoEnFecha,
+  }: {
+    espacio: EspacioDTO;
+    fechaFiltro: string | null;
+    ocupadoEnFecha: boolean;
+  }) => {
+    const precioBase = resolverPrecio(espacio);
+
+    return (
+      <ProductoEspacioCard
+        espacio={espacio}
+        precioBase={precioBase}
+        fechaSeleccionada={fechaFiltro}
+        ocupadoEnFecha={ocupadoEnFecha}
+        onReservar={() =>
+          navigate(PATHS.RESERVA_ID.replace(":id", espacio.id))
+        }
+      />
+    );
+  };
+
+  /* ============================================================
+   * Filtros
    * ============================================================ */
   const {
     search,
@@ -43,12 +80,12 @@ const PublicoEspaciosPage: React.FC = () => {
     espacios,
     fechaFiltro: null,
     soloDisponibles: false,
-    estaOcupadoEnFecha: () => false,
+    estaOcupadoEnFecha: estaOcupadoDummy,
     resolverPrecio,
   });
 
   /* ============================================================
-   * Contenido renderizado
+   * Contenido
    * ============================================================ */
   const contenido = useMemo(() => {
     if (loading) {
@@ -57,32 +94,31 @@ const PublicoEspaciosPage: React.FC = () => {
           <EspaciosEmptyState
             title="Cargando espacios…"
             message="Estamos consultando los espacios disponibles."
+            variant="info"
           />
         </motion.div>
       );
     }
 
-    if (!loading && espacios.length === 0) {
+    if (espacios.length === 0) {
       return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <EspaciosEmptyState
-            title="Aún no hay espacios"
-            message="El catálogo estará disponible cuando el administrador los registre."
-          />
-        </motion.div>
+        <EspaciosEmptyState
+          title="Aún no hay espacios"
+          message="El catálogo estará disponible cuando el administrador los registre."
+          variant="empty"
+        />
       );
     }
 
     if (espaciosFiltrados.length === 0) {
       return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <EspaciosEmptyState
-            title="Sin resultados"
-            message="Prueba ajustando los filtros."
-            actionLabel="Limpiar filtros"
-            onAction={resetFiltrosBasicos}
-          />
-        </motion.div>
+        <EspaciosEmptyState
+          title="Sin resultados"
+          message="Prueba ajustando los filtros."
+          actionLabel="Limpiar filtros"
+          onAction={resetFiltrosBasicos}
+          variant="warning"
+        />
       );
     }
 
@@ -95,11 +131,19 @@ const PublicoEspaciosPage: React.FC = () => {
         <EspaciosGrid
           espacios={espaciosFiltrados}
           fechaFiltro={null}
-          estaOcupadoEnFecha={() => false}
+          estaOcupadoEnFecha={estaOcupadoDummy}
+          CardComponent={CardProductoAdapter}
         />
       </motion.div>
     );
-  }, [loading, espacios, espaciosFiltrados, resetFiltrosBasicos]);
+  }, [
+    loading,
+    espacios,
+    espaciosFiltrados,
+    resetFiltrosBasicos,
+    estaOcupadoDummy,
+    CardProductoAdapter,
+  ]);
 
   return (
     <main className="min-h-screen bg-[#F9FAFB] pb-10">
@@ -126,4 +170,4 @@ const PublicoEspaciosPage: React.FC = () => {
   );
 };
 
-export default React.memo(PublicoEspaciosPage);
+export default memo(PublicoEspaciosPage);

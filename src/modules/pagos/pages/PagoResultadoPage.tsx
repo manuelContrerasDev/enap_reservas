@@ -6,7 +6,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 
-import { useAuth } from "@/context/auth";
+import { useAuth } from "@/modules/auth/hooks";
 
 import ResultadoCard from "@/modules/pagos/components/resultado/ResultadoCard";
 import ResultadoIcon from "@/modules/pagos/components/resultado/ResultadoIcon";

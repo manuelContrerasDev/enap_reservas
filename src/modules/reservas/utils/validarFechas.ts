@@ -1,7 +1,7 @@
 // src/modules/reservas/utils/validarFechas.ts
-import { parseYmdLocal } from "@/lib";
-import type { ReservaFrontendType } from "@/validators/reserva.schema";
-import type { Espacio } from "@/context/EspaciosContext";
+import { parseYmdLocal } from "@/shared/lib";
+import type { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
+import type { EspacioDTO } from "@/modules/espacios/types/espacios";
 
 export interface BloqueFecha {
   fechaInicio: string;
@@ -12,7 +12,7 @@ type TipoNotificacion = "error" | "info" | "success";
 
 interface ArgsValidarFechas {
   data: ReservaFrontendType;
-  espacio: Espacio | null;
+  espacio: EspacioDTO | null;
   bloquesOcupados: BloqueFecha[];
   notify: (mensaje: string, tipo: TipoNotificacion) => void;
 }
@@ -38,12 +38,12 @@ export function validarFechasConBloques({
   const ini = parseYmdLocal(data.fechaInicio);
   const fin = parseYmdLocal(data.fechaFin);
 
-  if (!ini || !fin || !(ini instanceof Date) || !(fin instanceof Date)) {
+  if (!ini || !fin) {
     notify("Fechas inválidas.", "error");
     return false;
   }
 
-  // ❗ Regla oficial: NO puede INICIAR lunes, pero sí puede TERMINAR lunes
+  // ❗ Regla ENAP: NO iniciar lunes (sí puede terminar lunes)
   if (isMonday(ini)) {
     notify("No puedes iniciar una reserva en día lunes.", "error");
     return false;
@@ -58,22 +58,30 @@ export function validarFechasConBloques({
   }
 
   if (fin <= ini) {
-    notify("La fecha de término debe ser posterior a la de inicio.", "error");
+    notify(
+      "La fecha de término debe ser posterior a la de inicio.",
+      "error"
+    );
     return false;
   }
 
-  const diffMs = fin.getTime() - ini.getTime();
-  const dias = Math.ceil(diffMs / 86400000);
+  const dias =
+    Math.ceil(
+      (fin.getTime() - ini.getTime()) / 86_400_000
+    );
 
-  // Min / max días solo para CAB/QUINCHO
+  // ⛔ Min / max días solo para CAB / QUINCHO
   if (espacio.tipo !== "PISCINA") {
     if (dias < 3 || dias > 6) {
-      notify("Las reservas deben tener mínimo 3 y máximo 6 días.", "error");
+      notify(
+        "Las reservas deben tener mínimo 3 y máximo 6 días.",
+        "error"
+      );
       return false;
     }
   }
 
-  // Conflicto con bloques ocupados (no aplica cupos piscina)
+  // 🔒 Solapamiento con bloques ocupados (espacio principal)
   const solapa = bloquesOcupados.some((b) => {
     const iniO = new Date(b.fechaInicio);
     const finO = new Date(b.fechaFin);
@@ -81,7 +89,10 @@ export function validarFechasConBloques({
   });
 
   if (solapa) {
-    notify("El espacio ya está reservado en ese rango de fechas.", "error");
+    notify(
+      "El espacio ya está reservado en ese rango de fechas.",
+      "error"
+    );
     return false;
   }
 

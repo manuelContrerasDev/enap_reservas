@@ -1,47 +1,30 @@
 // src/shared/api/http.ts
+import axios from "axios";
 
-export class HttpError extends Error {
-  status: number;
-  data?: unknown;
+const TOKEN_KEY = "enap_token";
 
-  constructor(status: number, message: string, data?: unknown) {
-    super(message);
-    this.status = status;
-    this.data = data;
-  }
-}
+const API_BASE = import.meta.env.VITE_API_URL;
+const BASE_URL = API_BASE.endsWith("/")
+  ? `${API_BASE}api`
+  : `${API_BASE}/api`;
 
-interface HttpOptions extends RequestInit {
-  auth?: boolean;
-}
+export const http = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: false,
+});
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+http.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem(TOKEN_KEY);
 
-export async function http<T>(
-  endpoint: string,
-  { auth = true, ...options }: HttpOptions = {}
-): Promise<T> {
-  const finalHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (auth) {
-    const token = localStorage.getItem("token");
     if (token) {
-      finalHeaders["Authorization"] = `Bearer ${token}`;
+      config.headers = {
+        ...config.headers,
+        Authorization: `Bearer ${token}`,
+      };
     }
-  }
 
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers: finalHeaders,
-  });
-
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    throw new HttpError(res.status, data?.message || "HTTP Error", data);
-  }
-
-  return data as T;
-}
+    return config;
+  },
+  (error) => Promise.reject(error)
+);

@@ -1,5 +1,5 @@
 // src/modules/reservas/storage/autoSaveReserva.ts
-import type { ReservaFrontendType } from "@/validators/reserva.schema";
+import type { ReservaFrontendType } from "@/modules/reservas/schemas/reserva.schema";
 import type { UseFormWatch } from "react-hook-form";
 
 export const FORM_KEY_RESERVA = "reservaDraftEnap";

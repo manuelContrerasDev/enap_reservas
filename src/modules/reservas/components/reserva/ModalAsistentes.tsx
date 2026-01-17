@@ -1,13 +1,13 @@
 // ============================================================================
-// ModalAsistentes.tsx — UX/UI Premium ENAP 2025 (FINAL SAFE)
+// ModalAsistentes.tsx — ENAP 2025 (FINAL SYNC)
 // ============================================================================
 
 import React, { useEffect, useState } from "react";
 import { X, UserPlus, Trash2 } from "lucide-react";
-import { useNotificacion } from "@/context/NotificacionContext";
+import { useNotificacion } from "@/shared/providers/NotificacionProvider";
 
 /* ============================================================
- * MODELO INVITADO (FRONTEND SNAPSHOT)
+ * MODELO INVITADO
  * ============================================================ */
 export interface Invitado {
   nombre: string;
@@ -20,8 +20,11 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSave: (invitados: Invitado[]) => void;
+
   initial?: Invitado[];
   maxCantidad: number;
+
+  admitePiscina: boolean;
   maxPiscina?: number;
 }
 
@@ -31,21 +34,22 @@ export default function ModalAsistentes({
   onSave,
   initial = [],
   maxCantidad,
+  admitePiscina,
   maxPiscina = Infinity,
 }: Props) {
   const { agregarNotificacion } = useNotificacion();
   const [lista, setLista] = useState<Invitado[]>([]);
 
   /* ============================================================
-   * SYNC INICIAL (DEFENSIVO)
+   * SYNC INICIAL
    * ============================================================ */
   useEffect(() => {
     setLista(
-      (initial ?? []).map((i) => ({
+      initial.map((i) => ({
         nombre: i.nombre ?? "",
         rut: i.rut ?? "",
         edad: i.edad,
-        esPiscina: Boolean(i.esPiscina), // ✅ siempre boolean
+        esPiscina: Boolean(i.esPiscina),
       }))
     );
   }, [initial]);
@@ -55,8 +59,8 @@ export default function ModalAsistentes({
   /* ============================================================
    * HELPERS
    * ============================================================ */
-  const totalPiscina = lista.filter((i) => i.esPiscina).length;
   const canAddMore = lista.length < maxCantidad;
+  const piscinaUsados = lista.filter((i) => i.esPiscina).length;
 
   /* ============================================================
    * ACTIONS
@@ -64,7 +68,7 @@ export default function ModalAsistentes({
   const addRow = () => {
     if (!canAddMore) {
       agregarNotificacion(
-        `El máximo permitido es ${maxCantidad} asistentes.`,
+        `Máximo permitido: ${maxCantidad} asistentes.`,
         "error"
       );
       return;
@@ -72,12 +76,7 @@ export default function ModalAsistentes({
 
     setLista((prev) => [
       ...prev,
-      {
-        nombre: "",
-        rut: "",
-        edad: undefined,
-        esPiscina: false,
-      },
+      { nombre: "", rut: "", edad: undefined, esPiscina: false },
     ]);
   };
 
@@ -98,21 +97,8 @@ export default function ModalAsistentes({
   };
 
   const guardar = () => {
-    /* -------- cantidad exacta -------- */
-    if (lista.length !== maxCantidad) {
-      agregarNotificacion(
-        `Debes registrar exactamente ${maxCantidad} asistente(s).`,
-        "error"
-      );
-      return;
-    }
-
-    /* -------- campos obligatorios -------- */
-    const invalid = lista.some(
-      (i) => !i.nombre.trim() || !i.rut.trim()
-    );
-
-    if (invalid) {
+    /* obligatorios */
+    if (lista.some((i) => !i.nombre.trim() || !i.rut.trim())) {
       agregarNotificacion(
         "Todos los asistentes deben tener nombre y RUT.",
         "error"
@@ -120,16 +106,13 @@ export default function ModalAsistentes({
       return;
     }
 
-    /* -------- validación piscina -------- */
-    if (totalPiscina > maxPiscina) {
-      agregarNotificacion(
-        `Marcaste ${totalPiscina} personas para piscina, pero declaraste ${maxPiscina}.`,
-        "error"
-      );
-      return;
-    }
+    /* normalización piscina */
+    const normalizados = lista.map((i) => ({
+      ...i,
+      esPiscina: admitePiscina ? i.esPiscina : false,
+    }));
 
-    onSave(lista);
+    onSave(normalizados);
     onClose();
   };
 
@@ -142,18 +125,17 @@ export default function ModalAsistentes({
         {/* HEADER */}
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h2 className="text-xl font-bold text-enap-azul">
+            <h2 className="text-xl font-bold text-[#003B4D]">
               Asistentes ({lista.length}/{maxCantidad})
             </h2>
-            <p className="text-xs text-gray-500 mt-1">
-              Marca quiénes harán uso de la piscina.
-            </p>
+            {admitePiscina && (
+              <p className="text-xs text-gray-500 mt-1">
+                Personas con piscina: {piscinaUsados}/{maxPiscina}
+              </p>
+            )}
           </div>
 
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-gray-800"
-          >
+          <button onClick={onClose} className="text-gray-600">
             <X size={22} />
           </button>
         </div>
@@ -164,28 +146,20 @@ export default function ModalAsistentes({
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold">#</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold">
-                    Nombre
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold">
-                    RUT
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-semibold w-20">
-                    Piscina
-                  </th>
-                  <th className="px-3 py-2 text-center text-xs font-semibold w-16">
-                    Acción
-                  </th>
+                  <th className="px-3 py-2">#</th>
+                  <th className="px-3 py-2">Nombre</th>
+                  <th className="px-3 py-2">RUT</th>
+                  {admitePiscina && (
+                    <th className="px-3 py-2 text-center">Piscina</th>
+                  )}
+                  <th className="px-3 py-2 text-center">Acción</th>
                 </tr>
               </thead>
 
               <tbody>
                 {lista.map((inv, index) => (
-                  <tr key={index} className="border-b last:border-b-0">
-                    <td className="px-3 py-2 text-gray-500">
-                      {index + 1}
-                    </td>
+                  <tr key={index} className="border-b">
+                    <td className="px-3 py-2">{index + 1}</td>
 
                     <td className="px-3 py-2">
                       <input
@@ -207,21 +181,26 @@ export default function ModalAsistentes({
                       />
                     </td>
 
-                    <td className="px-3 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={inv.esPiscina}
-                        onChange={(e) =>
-                          update(index, "esPiscina", e.target.checked)
-                        }
-                        className="h-4 w-4 accent-enap-cyan cursor-pointer"
-                      />
-                    </td>
+                    {admitePiscina && (
+                      <td className="px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={inv.esPiscina}
+                          disabled={
+                            !inv.esPiscina &&
+                            piscinaUsados >= maxPiscina
+                          }
+                          onChange={(e) =>
+                            update(index, "esPiscina", e.target.checked)
+                          }
+                        />
+                      </td>
+                    )}
 
                     <td className="px-3 py-2 text-center">
                       <button
                         onClick={() => remove(index)}
-                        className="text-red-600 hover:text-red-800"
+                        className="text-red-600"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -234,17 +213,13 @@ export default function ModalAsistentes({
         </div>
 
         {/* FOOTER */}
-        <div className="flex justify-between items-center mt-4 pt-3 border-t">
+        <div className="flex justify-between mt-4 pt-3 border-t">
           <button
             onClick={addRow}
             disabled={!canAddMore}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs ${
-              canAddMore
-                ? "bg-enap-cyan hover:bg-enap-azul text-dark"
-                : "bg-gray-200 text-gray-500 cursor-not-allowed"
-            }`}
+            className="px-4 py-2 rounded-lg text-xs bg-[#00A3C4] text-white"
           >
-            <UserPlus size={16} /> Añadir fila
+            <UserPlus size={14} /> Añadir fila
           </button>
 
           <button

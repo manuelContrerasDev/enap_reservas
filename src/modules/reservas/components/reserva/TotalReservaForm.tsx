@@ -1,14 +1,14 @@
 // ============================================================
-// TotalReservaForm.tsx — UX/UI Premium ENAP (Versión Final Sync)
+// TotalReservaForm.tsx — UX/UI Premium ENAP (FINAL SYNC)
 // ============================================================
 
 import React from "react";
 import { DollarSign, Users, Waves, Home } from "lucide-react";
-import { clp } from "@/lib/format";
+import { clp } from "@/shared/lib/format2";
 
 interface Props {
   dias: number;
-  valorEspacio: number; // YA viene como tarifaBase * dias
+  valorEspacio: number; // tarifaBase * dias (o 0 si POR_PERSONA)
   pagoPersonas: number;
   pagoPiscina: number;
   total: number;
@@ -33,20 +33,21 @@ export const TotalReserva: React.FC<Props> = ({
 
       {/* DESGLOSE */}
       <dl className="space-y-3 text-sm text-gray-700">
-        
-        {/* ESPACIO */}
-        <div className="flex items-center justify-between">
-          <dt className="flex items-center gap-2 font-semibold">
-            <Home size={16} className="text-enap-azul" />
-            Espacio
-          </dt>
-          <dd className="text-right">
-            <span className="block">{clp(valorEspacio)}</span>
-            <span className="text-xs text-gray-500">
-              ({dias} {plural})
-            </span>
-          </dd>
-        </div>
+        {/* ESPACIO (solo si aplica) */}
+        {valorEspacio > 0 && (
+          <div className="flex items-center justify-between">
+            <dt className="flex items-center gap-2 font-semibold">
+              <Home size={16} className="text-enap-azul" />
+              Espacio
+            </dt>
+            <dd className="text-right">
+              <span className="block">{clp(valorEspacio)}</span>
+              <span className="text-xs text-gray-500">
+                ({dias} {plural})
+              </span>
+            </dd>
+          </div>
+        )}
 
         {/* PERSONAS */}
         <div className="flex items-center justify-between">
@@ -57,24 +58,29 @@ export const TotalReserva: React.FC<Props> = ({
           <dd>{clp(pagoPersonas)}</dd>
         </div>
 
-        {/* PISCINA */}
-        <div className="flex items-center justify-between">
-          <dt className="flex items-center gap-2 font-semibold">
-            <Waves size={16} className="text-enap-azul" />
-            Piscina
-          </dt>
-          <dd>{clp(pagoPiscina)}</dd>
-        </div>
+        {/* PISCINA (solo si hay cobro real) */}
+        {pagoPiscina > 0 && (
+          <div className="flex items-center justify-between">
+            <dt className="flex items-center gap-2 font-semibold">
+              <Waves size={16} className="text-enap-azul" />
+              Piscina
+            </dt>
+            <dd>{clp(pagoPiscina)}</dd>
+          </div>
+        )}
       </dl>
 
       {/* TOTAL */}
       <div className="border-t pt-4">
-        <output className="block text-3xl font-extrabold text-enap-dorado tracking-tight">
+        <output
+          aria-live="polite"
+          className="block text-3xl font-extrabold text-enap-dorado tracking-tight"
+        >
           {clp(total)}
         </output>
 
         <p className="text-xs text-gray-500 mt-1">
-          El total puede variar según fechas, recalculo o disponibilidad.
+          El total puede variar según fechas, recálculo o disponibilidad.
         </p>
       </div>
     </section>
